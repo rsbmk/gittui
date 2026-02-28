@@ -1,14 +1,23 @@
 {
   "name": "guit",
   "version": "0.1.0",
+  "description": "Modern terminal git client",
   "type": "module",
-  "private": true,
   "bin": {
     "guit": "./src/index.ts"
   },
+  "files": [
+    "src/",
+    "dist/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "dev": "bun run src/index.ts",
-    "build": "bun build --compile --outfile=guit src/index.ts",
+    "dev": "bun --preload @opentui/solid/preload --hot src/index.ts",
+    "build": "bun --preload @opentui/solid/preload build --compile --outfile=guit src/index.ts",
+    "build:all": "bun run scripts/build.ts",
+    "build:current": "bun run scripts/build.ts --current",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
@@ -17,8 +26,10 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@opentui-ui/dialog": "^0.1.2",
     "@opentui/core": "^0.1.84",
     "@opentui/solid": "^0.1.84",
+    "smol-toml": "^1.6.0",
     "solid-js": "^1.9.11"
   }
 }
