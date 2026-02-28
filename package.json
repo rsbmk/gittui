@@ -1,0 +1,24 @@
+{
+  "name": "guit",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "guit": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build --compile --outfile=guit src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.1.84",
+    "@opentui/solid": "^0.1.84",
+    "solid-js": "^1.9.11"
+  }
+}
