@@ -92,6 +92,14 @@ import {
   prFileSelectedIndex,
   setPRFileSelectedIndex,
 } from "../../state/prs.ts"
+import {
+  settingsMoveFieldDown,
+  settingsMoveFieldUp,
+  settingsMoveSectionDown,
+  settingsMoveSectionUp,
+  settingsInteract,
+  settingsOpenEditor,
+} from "../views/settings.tsx"
 
 // ── Number key → tab mapping ─────────────────────────────────
 
@@ -101,6 +109,7 @@ const KEY_TO_TAB: Record<string, TabId> = {
   "3": TAB_ID.COMMITS,
   "4": TAB_ID.STASH,
   "5": TAB_ID.PRS,
+  "6": TAB_ID.SETTINGS,
 }
 
 // ── List length per tab ──────────────────────────────────────
@@ -111,7 +120,7 @@ function currentListLength(): number {
     case TAB_ID.FILES: {
       const s = repo.status
       if (!s) return 0
-      return s.unstaged.length + s.staged.length
+      return s.unstaged.length + s.untracked.length + s.staged.length
     }
     case TAB_ID.BRANCHES:
       return branchListLength()
@@ -124,6 +133,8 @@ function currentListLength(): number {
       // When viewing detail, navigate files; otherwise navigate PR list
       if (viewingPRDetail()) return prs.files.length
       return prListLength()
+    case TAB_ID.SETTINGS:
+      return 0
     default:
       return 0
   }
@@ -145,6 +156,8 @@ function getSelectedIndex(): number {
     case TAB_ID.PRS:
       if (viewingPRDetail()) return prFileSelectedIndex()
       return prSelIdx()
+    case TAB_ID.SETTINGS:
+      return 0
     default:
       return 0
   }
@@ -174,6 +187,8 @@ function setCurrentSelectedIndex(idx: number | ((prev: number) => number)): void
       } else {
         setPRSelectedIndex(typeof idx === "function" ? idx(prSelIdx()) : idx)
       }
+      break
+    case TAB_ID.SETTINGS:
       break
   }
 }
@@ -390,6 +405,70 @@ export function GlobalKeyHandler() {
     const tab = KEY_TO_TAB[key.name]
     if (tab) {
       switchToTab(tab)
+      return
+    }
+
+    // ── Settings tab — custom navigation ─────────────────────
+    if (activeTab() === TAB_ID.SETTINGS) {
+      switch (key.name) {
+        case "tab":
+          switchPanel()
+          return
+        case "ctrl+b":
+          toggleSidebar()
+          return
+        case ":":
+          setCommandPaletteOpen(true)
+          return
+        case "?":
+          setHelpOverlayOpen(true)
+          return
+        case "q":
+          renderer.destroy()
+          process.exit(0)
+          return
+        case "j":
+        case "down":
+          if (activePanel() === PANEL.SIDEBAR) settingsMoveSectionDown()
+          else settingsMoveFieldDown()
+          return
+        case "k":
+        case "up":
+          if (activePanel() === PANEL.SIDEBAR) settingsMoveSectionUp()
+          else settingsMoveFieldUp()
+          return
+        case "h":
+        case "left":
+          if (activePanel() === PANEL.MAIN) {
+            settingsInteract("prev")
+          } else {
+            setActivePanel(PANEL.SIDEBAR)
+          }
+          return
+        case "l":
+        case "right":
+          if (activePanel() === PANEL.MAIN) {
+            settingsInteract("next")
+          } else {
+            setActivePanel(PANEL.MAIN)
+          }
+          return
+        case "return":
+          if (activePanel() === PANEL.SIDEBAR) {
+            setActivePanel(PANEL.MAIN)
+          } else {
+            settingsInteract("toggle")
+          }
+          return
+        case "space":
+          if (activePanel() === PANEL.MAIN) {
+            settingsInteract("toggle")
+          }
+          return
+        case "e":
+          settingsOpenEditor()
+          return
+      }
       return
     }
 

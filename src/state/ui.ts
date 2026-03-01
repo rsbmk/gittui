@@ -11,6 +11,7 @@ export const TAB_ID = {
   COMMITS: "commits",
   STASH: "stash",
   PRS: "prs",
+  SETTINGS: "settings",
 } as const
 
 export type TabId = (typeof TAB_ID)[keyof typeof TAB_ID]
@@ -21,6 +22,7 @@ const TAB_ORDER: TabId[] = [
   TAB_ID.COMMITS,
   TAB_ID.STASH,
   TAB_ID.PRS,
+  TAB_ID.SETTINGS,
 ]
 
 // ── Panel ─────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ import { FileTree } from "../components/file-tree.tsx"
 import { BranchList } from "../components/branch-list.tsx"
 import { CommitList } from "../components/commit-list.tsx"
 import { PRCard } from "../components/pr-card.tsx"
+import { ScrollList } from "../components/scroll-list.tsx"
 import {
   branchSelectedIndex,
   setBranchSelectedIndex,
@@ -36,11 +37,15 @@ import {
   setPRSelectedIndex,
 } from "../../state/prs.ts"
 import type { GitFile } from "../../core/git/types.ts"
+import { SectionSidebar } from "../components/settings/section-sidebar.tsx"
+import { sectionIndex } from "../views/settings.tsx"
 
 // ── File list helpers ────────────────────────────────────────
 
 function unstaged(): GitFile[] {
-  return repo.status?.unstaged ?? []
+  const modified = repo.status?.unstaged ?? []
+  const untracked = repo.status?.untracked ?? []
+  return [...modified, ...untracked]
 }
 
 function staged(): GitFile[] {
@@ -49,6 +54,39 @@ function staged(): GitFile[] {
 
 function allFiles(): GitFile[] {
   return [...unstaged(), ...staged()]
+}
+
+// ── Scroll follow ────────────────────────────────────────────
+
+function selectedRow(): number {
+  const tab = activeTab()
+  switch (tab) {
+    case TAB_ID.FILES: {
+      const idx = selectedIndex()
+      const unstagedLen = unstaged().length
+      const stagedLen = staged().length
+      // Item in UNSTAGED section: header row + offset
+      if (unstagedLen > 0 && idx < unstagedLen) {
+        return 1 + idx
+      }
+      // Item in STAGED section: unstaged rows + STAGED header + offset
+      const rowsAbove = unstagedLen > 0 ? 1 + unstagedLen : 0
+      if (stagedLen > 0) {
+        return rowsAbove + 1 + (idx - unstagedLen)
+      }
+      return 0
+    }
+    case TAB_ID.BRANCHES:
+      return 1 + branchSelectedIndex()
+    case TAB_ID.COMMITS:
+      return 1 + commitSelectedIndex()
+    case TAB_ID.PRS:
+      return prSelectedIndex() * 2 // Each PR card = 2 rows
+    case TAB_ID.SETTINGS:
+      return sectionIndex()
+    default:
+      return 0
+  }
 }
 
 // ── Component ────────────────────────────────────────────────
@@ -83,7 +121,7 @@ export function Sidebar() {
       borderStyle="single"
       borderColor={activePanel() === PANEL.SIDEBAR ? "#89b4fa" : "#313244"}
     >
-      <scrollbox flexGrow={1}>
+      <ScrollList selectedRow={selectedRow()} flexGrow={1}>
         {/* Files tab — file tree */}
         <Show when={activeTab() === TAB_ID.FILES}>
           <FileTree
@@ -153,7 +191,15 @@ export function Sidebar() {
             </For>
           </Show>
         </Show>
-      </scrollbox>
+
+        {/* Settings tab — section navigation */}
+        <Show when={activeTab() === TAB_ID.SETTINGS}>
+          <SectionSidebar
+            selectedIndex={sectionIndex()}
+            focused={activePanel() === PANEL.SIDEBAR}
+          />
+        </Show>
+      </ScrollList>
     </box>
   )
 }

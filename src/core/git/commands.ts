@@ -34,7 +34,7 @@ async function run(args: string[], cwd?: string): Promise<string> {
 // ── Queries ───────────────────────────────────────────────────
 
 export async function getStatus(cwd?: string): Promise<GitStatus> {
-  const stdout = await run(["status", "--porcelain=v2", "--branch"], cwd)
+  const stdout = await run(["status", "--porcelain=v2", "--branch", "-uall"], cwd)
   return parseStatus(stdout)
 }
 
@@ -99,6 +99,29 @@ export async function getStashList(cwd?: string): Promise<GitStash[]> {
   }
 
   return parseStash(result.stdout)
+}
+
+export async function getUntrackedDiff(path: string, opts?: {
+  contextLines?: number
+  cwd?: string
+}): Promise<FileDiff[]> {
+  const args = ["diff", "--no-index"]
+
+  if (opts?.contextLines !== undefined) args.push(`-U${opts.contextLines}`)
+  args.push("--", "/dev/null", path)
+
+  // git diff --no-index exits with 1 when differences exist (always for untracked)
+  const result = await exec(["git", ...args], { cwd: opts?.cwd })
+  if (result.exitCode > 1) {
+    throw new GitCommandError("diff --no-index", result.stderr)
+  }
+
+  const diffs = parseDiff(result.stdout)
+  // Clean up /dev/null artifact — parser extracts "dev/null" as oldPath
+  for (const d of diffs) {
+    if (d.oldPath === "dev/null") d.oldPath = undefined
+  }
+  return diffs
 }
 
 export async function getRawDiff(opts?: { staged?: boolean; path?: string; cwd?: string }): Promise<string> {

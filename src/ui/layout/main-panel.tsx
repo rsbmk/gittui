@@ -8,6 +8,7 @@ import { BranchesView } from "../views/branches.tsx"
 import { CommitsView } from "../views/commits.tsx"
 import { StashView } from "../views/stash.tsx"
 import { PullRequestsView } from "../views/pull-requests.tsx"
+import { SettingsView } from "../views/settings.tsx"
 import { ViewBoundary } from "../components/error-boundary.tsx"
 
 // ── Tab definitions ──────────────────────────────────────────
@@ -18,6 +19,7 @@ const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: TAB_ID.COMMITS, label: "Commits" },
   { id: TAB_ID.STASH, label: "Stash" },
   { id: TAB_ID.PRS, label: "PRs" },
+  { id: TAB_ID.SETTINGS, label: "Settings" },
 ]
 
 // ── Component ────────────────────────────────────────────────
@@ -62,6 +64,11 @@ export function MainPanel() {
           <Match when={activeTab() === TAB_ID.PRS}>
             <ViewBoundary name="PRs">
               <PullRequestsView />
+            </ViewBoundary>
+          </Match>
+          <Match when={activeTab() === TAB_ID.SETTINGS}>
+            <ViewBoundary name="Settings">
+              <SettingsView />
             </ViewBoundary>
           </Match>
         </Switch>

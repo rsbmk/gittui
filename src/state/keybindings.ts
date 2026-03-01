@@ -78,6 +78,10 @@ const PRS_BINDINGS: Keybinding[] = [
   { key: "v", action: "viewPRFile", context: "prs", description: "View file diff" },
 ]
 
+const SETTINGS_BINDINGS: Keybinding[] = [
+  { key: "e", action: "openEditor", context: "settings", description: "Open in editor" },
+]
+
 // ── Vim Preset ────────────────────────────────────────────────
 
 export const VIM_BINDINGS: Keybinding[] = [
@@ -87,6 +91,7 @@ export const VIM_BINDINGS: Keybinding[] = [
   { key: "3", action: "switchTab:commits", context: "global", description: "Commits tab" },
   { key: "4", action: "switchTab:stash", context: "global", description: "Stash tab" },
   { key: "5", action: "switchTab:prs", context: "global", description: "PRs tab" },
+  { key: "6", action: "switchTab:settings", context: "global", description: "Settings" },
   { key: "tab", action: "switchPanel", context: "global", description: "Switch panel" },
   { key: "ctrl+b", action: "toggleSidebar", context: "global", description: "Toggle sidebar" },
   { key: "?", action: "showHelp", context: "global", description: "Help" },
@@ -105,6 +110,7 @@ export const VIM_BINDINGS: Keybinding[] = [
   ...COMMITS_BINDINGS,
   ...STASH_BINDINGS,
   ...PRS_BINDINGS,
+  ...SETTINGS_BINDINGS,
 ]
 
 // ── Emacs Preset ──────────────────────────────────────────────
@@ -116,6 +122,7 @@ export const EMACS_BINDINGS: Keybinding[] = [
   { key: "3", action: "switchTab:commits", context: "global", description: "Commits tab" },
   { key: "4", action: "switchTab:stash", context: "global", description: "Stash tab" },
   { key: "5", action: "switchTab:prs", context: "global", description: "PRs tab" },
+  { key: "6", action: "switchTab:settings", context: "global", description: "Settings" },
   { key: "tab", action: "switchPanel", context: "global", description: "Switch panel" },
   { key: "ctrl+b", action: "toggleSidebar", context: "global", description: "Toggle sidebar" },
   { key: "?", action: "showHelp", context: "global", description: "Help" },
@@ -135,6 +142,7 @@ export const EMACS_BINDINGS: Keybinding[] = [
   ...COMMITS_BINDINGS,
   ...STASH_BINDINGS,
   ...PRS_BINDINGS,
+  ...SETTINGS_BINDINGS,
 ]
 
 // ── Signal ────────────────────────────────────────────────────

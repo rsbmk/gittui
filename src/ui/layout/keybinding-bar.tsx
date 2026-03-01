@@ -12,6 +12,7 @@ const PRIORITY_ACTIONS: Record<string, string[]> = {
   commits: ["toggleBody", "cherryPick", "revert", "switchPanel", "quit"],
   stash: ["viewStash", "applyStash", "popStash", "saveStash", "switchPanel", "quit"],
   prs: ["switchPanel", "quit"],
+  settings: ["openEditor", "switchPanel", "quit"],
 }
 
 export function KeybindingBar() {
