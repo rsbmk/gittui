@@ -1,0 +1,28 @@
+{
+  "name": "default-dark",
+  "colors": {
+    "bg": "#1e1e1e",
+    "fg": "#d4d4d4",
+    "accent": "#569cd6",
+    "success": "#6a9955",
+    "warning": "#d7ba7d",
+    "error": "#f44747",
+    "muted": "#6a6a6a",
+    "border": "#333333",
+    "selection": "#264f78",
+    "diff_add_bg": "#1e3a1e",
+    "diff_del_bg": "#3a1e1e",
+    "diff_add_fg": "#b5cea8",
+    "diff_del_fg": "#f48771"
+  },
+  "syntax": {
+    "keyword": "#569cd6",
+    "string": "#ce9178",
+    "number": "#b5cea8",
+    "comment": "#6a9955",
+    "function": "#dcdcaa",
+    "type": "#4ec9b0",
+    "variable": "#9cdcfe",
+    "operator": "#d4d4d4"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "nord",
+  "colors": {
+    "bg": "#2e3440",
+    "fg": "#eceff4",
+    "accent": "#88c0d0",
+    "success": "#a3be8c",
+    "warning": "#ebcb8b",
+    "error": "#bf616a",
+    "muted": "#4c566a",
+    "border": "#3b4252",
+    "selection": "#434c5e",
+    "diff_add_bg": "#2b3328",
+    "diff_del_bg": "#3b2c2c",
+    "diff_add_fg": "#a3be8c",
+    "diff_del_fg": "#bf616a"
+  },
+  "syntax": {
+    "keyword": "#81a1c1",
+    "string": "#a3be8c",
+    "number": "#b48ead",
+    "comment": "#616e88",
+    "function": "#88c0d0",
+    "type": "#ebcb8b",
+    "variable": "#d8dee9",
+    "operator": "#81a1c1"
+  }
+}

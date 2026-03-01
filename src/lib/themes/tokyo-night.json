@@ -1,0 +1,28 @@
+{
+  "name": "tokyo-night",
+  "colors": {
+    "bg": "#1a1b26",
+    "fg": "#c0caf5",
+    "accent": "#7aa2f7",
+    "success": "#9ece6a",
+    "warning": "#e0af68",
+    "error": "#f7768e",
+    "muted": "#565f89",
+    "border": "#27293d",
+    "selection": "#283457",
+    "diff_add_bg": "#1a2e1f",
+    "diff_del_bg": "#2d1b2e",
+    "diff_add_fg": "#9ece6a",
+    "diff_del_fg": "#f7768e"
+  },
+  "syntax": {
+    "keyword": "#9d7cd8",
+    "string": "#9ece6a",
+    "number": "#ff9e64",
+    "comment": "#565f89",
+    "function": "#7aa2f7",
+    "type": "#2ac3de",
+    "variable": "#c0caf5",
+    "operator": "#89ddff"
+  }
+}
