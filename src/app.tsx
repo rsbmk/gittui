@@ -10,9 +10,11 @@ import { KeybindingBar } from "./ui/layout/keybinding-bar.tsx"
 import { GlobalKeyHandler } from "./ui/layout/global-keys.tsx"
 import { sidebarVisible } from "./state/ui.ts"
 import { refreshAll } from "./state/repo.ts"
+import { initConfig } from "./state/config.ts"
 
 export default function App() {
-  onMount(() => {
+  onMount(async () => {
+    await initConfig()
     refreshAll()
   })
 

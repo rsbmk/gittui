@@ -41,10 +41,12 @@ export async function getStatus(cwd?: string): Promise<GitStatus> {
 export async function getDiff(opts?: {
   path?: string
   staged?: boolean
+  contextLines?: number
   cwd?: string
 }): Promise<FileDiff[]> {
   const args = ["diff"]
 
+  if (opts?.contextLines !== undefined) args.push(`-U${opts.contextLines}`)
   if (opts?.staged) args.push("--cached")
   if (opts?.path) args.push("--", opts.path)
 
@@ -161,11 +163,14 @@ export async function getCommitFiles(hash: string, cwd?: string): Promise<GitFil
 
 export async function getCommitDiff(hash: string, opts?: {
   path?: string
+  contextLines?: number
   cwd?: string
 }): Promise<FileDiff[]> {
   // For the root commit (no parent), use --root flag with diff-tree
   // Otherwise use standard diff between parent and commit
   const args = ["diff"]
+
+  if (opts?.contextLines !== undefined) args.push(`-U${opts.contextLines}`)
 
   try {
     // Try parent ref first: <hash>^..<hash>

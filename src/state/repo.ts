@@ -5,6 +5,7 @@ import { createStore } from "solid-js/store"
 import type { FileDiff, GitBranch, GitCommit, GitStash, GitStatus } from "../core/git/types.ts"
 import { getBranches, getDiff, getLog, getStashList, getStatus } from "../core/git/commands.ts"
 import { error as logError } from "../lib/logger.ts"
+import { config } from "./config.ts"
 
 // ── State Interface ───────────────────────────────────────────
 
@@ -52,7 +53,8 @@ export async function refreshStatus(): Promise<void> {
 
 export async function refreshDiff(path?: string, staged?: boolean): Promise<void> {
   try {
-    const diff = await getDiff({ path, staged })
+    const { context_lines } = config().diff
+    const diff = await getDiff({ path, staged, contextLines: context_lines })
     setRepo("diff", diff)
   } catch (err) {
     setRepo("error", err instanceof Error ? err.message : String(err))
