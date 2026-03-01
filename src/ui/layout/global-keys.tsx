@@ -41,7 +41,7 @@ import type { AgentId } from "../../core/ai/types.ts"
 import { getRawDiff } from "../../core/git/commands.ts"
 import { config, setConfig } from "../../state/config.ts"
 import { saveConfig } from "../../core/config/loader.ts"
-import { showStatusMessage } from "../../state/ui.ts"
+import { showStatusMessage, setStatusMessage } from "../../state/ui.ts"
 import {
   handleCheckout,
   handleMerge,
@@ -306,8 +306,8 @@ export function GlobalKeyHandler() {
       await saveConfig(cfg)
     }
 
-    // 3. Generate
-    showStatusMessage("Generating commit message...")
+    // 3. Generate — persistent status until completion
+    setStatusMessage("Generating commit message...")
     try {
       const diff = await getRawDiff({ staged: true })
       if (!diff.trim()) {
@@ -317,7 +317,8 @@ export function GlobalKeyHandler() {
 
       const result = await generateCommitMessage(agentId as AgentId, diff, config().ai.commit_prompt)
 
-      // 4. Open commit modal with pre-filled message
+      // 4. Clear status and open commit modal with pre-filled message
+      setStatusMessage(null)
       await openCommitDialog(result.message)
     } catch (err) {
       showStatusMessage(`Failed: ${err instanceof Error ? err.message : String(err)}`)
@@ -426,8 +427,13 @@ export function GlobalKeyHandler() {
         return
     }
 
+    // Build effective key name — shift+letter → uppercase (e.g. shift+c → "C")
+    const effectiveKey = key.shift && key.name.length === 1 && key.name >= "a" && key.name <= "z"
+      ? key.name.toUpperCase()
+      : key.name
+
     // Context-specific bindings
-    const binding = findBinding(key.name, activeTab())
+    const binding = findBinding(effectiveKey, activeTab())
     if (binding && binding.context !== "global") {
       // Try registered dialog handlers first, then static handlers
       if (!executeRegisteredAction(binding.action)) {

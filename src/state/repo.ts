@@ -4,6 +4,7 @@
 import { createStore } from "solid-js/store"
 import type { FileDiff, GitBranch, GitCommit, GitStash, GitStatus } from "../core/git/types.ts"
 import { getBranches, getDiff, getLog, getStashList, getStatus } from "../core/git/commands.ts"
+import { error as logError } from "../lib/logger.ts"
 
 // ── State Interface ───────────────────────────────────────────
 
@@ -41,7 +42,9 @@ export async function refreshStatus(): Promise<void> {
     const status = await getStatus()
     setRepo("status", status)
   } catch (err) {
-    setRepo("error", err instanceof Error ? err.message : String(err))
+    const msg = err instanceof Error ? err.message : String(err)
+    logError("Failed to refresh status", { error: msg })
+    setRepo("error", msg)
   } finally {
     setRepo("loading", false)
   }

@@ -42,6 +42,8 @@ export const [selectedFile, setSelectedFile] = createSignal<string | null>(null)
 export const [selectedIndex, setSelectedIndex] = createSignal(0)
 export const [searchQuery, setSearchQuery] = createSignal("")
 export const [commandPaletteOpen, setCommandPaletteOpen] = createSignal(false)
+export const [helpOverlayOpen, setHelpOverlayOpen] = createSignal(false)
+export const [dialogOpen, setDialogOpen] = createSignal(false)
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -69,4 +71,34 @@ export function prevTab(): void {
 
 export function switchToTab(tab: TabId): void {
   setActiveTab(tab)
+}
+
+// ── Status Message ───────────────────────────────────────────
+
+export const [statusMessage, setStatusMessage] = createSignal<string | null>(null)
+
+let statusTimer: ReturnType<typeof setTimeout> | null = null
+
+export function showStatusMessage(msg: string, durationMs = 5000): void {
+  if (statusTimer) clearTimeout(statusTimer)
+  setStatusMessage(msg)
+  statusTimer = setTimeout(() => {
+    setStatusMessage(null)
+    statusTimer = null
+  }, durationMs)
+}
+
+// ── Dialog tracking ──────────────────────────────────────────
+
+/**
+ * Wraps a dialog call (prompt/confirm/show) to track open state.
+ * While a dialog is open, global keybindings are suppressed.
+ */
+export async function withDialog<T>(fn: () => Promise<T>): Promise<T> {
+  setDialogOpen(true)
+  try {
+    return await fn()
+  } finally {
+    setDialogOpen(false)
+  }
 }
