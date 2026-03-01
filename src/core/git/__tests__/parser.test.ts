@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test"
 
 import {
   parseBranches,
+  parseCommitFiles,
+  parseCommitStats,
   parseDiff,
   parseLog,
   parseStash,
@@ -282,6 +284,40 @@ zcmZ`
     expect(diffs[0]!.binary).toBe(true)
   })
 
+  test("does not false-positive binary for content containing 'Binary files'", () => {
+    const output = `diff --git a/docs/design.md b/docs/design.md
+new file mode 100644
+index 0000000..abc1234
+--- /dev/null
++++ b/docs/design.md
+@@ -0,0 +1,5 @@
++# Design Notes
++
++- **Binary files**: DiffView already handles binary detection
++- GIT binary patch format is also supported
++- Text files should never be flagged as binary`
+
+    const diffs = parseDiff(output)
+
+    expect(diffs).toHaveLength(1)
+    expect(diffs[0]!.path).toBe("docs/design.md")
+    expect(diffs[0]!.binary).toBe(false)
+    expect(diffs[0]!.hunks).toHaveLength(1)
+    expect(diffs[0]!.hunks[0]!.lines).toHaveLength(5)
+  })
+
+  test("detects binary for /dev/null (new binary file)", () => {
+    const output = `diff --git a/image.png b/image.png
+new file mode 100644
+index 0000000..abc1234
+Binary files /dev/null and b/image.png differ`
+
+    const diffs = parseDiff(output)
+
+    expect(diffs).toHaveLength(1)
+    expect(diffs[0]!.binary).toBe(true)
+  })
+
   test("handles rename detection (different a/ and b/ paths)", () => {
     const output = `diff --git a/src/old-name.ts b/src/new-name.ts
 similarity index 95%
@@ -551,5 +587,120 @@ describe("parseStash", () => {
     const stashes = parseStash(output)
 
     expect(stashes[0]!.index).toBe(42)
+  })
+})
+
+// ── parseCommitStats ──────────────────────────────────────────
+
+describe("parseCommitStats", () => {
+  test("parses full stat summary with insertions and deletions", () => {
+    const output = [
+      " src/core/git/commands.ts | 28 +++++++++++++++-----",
+      " src/ui/views/new.tsx     | 150 ++++++++++++++++++",
+      " src/old-file.ts          | 42 -----------------",
+      " 3 files changed, 178 insertions(+), 42 deletions(-)",
+    ].join("\n")
+
+    const stats = parseCommitStats(output)
+
+    expect(stats.filesChanged).toBe(3)
+    expect(stats.insertions).toBe(178)
+    expect(stats.deletions).toBe(42)
+  })
+
+  test("parses stat with only insertions", () => {
+    const output = " 1 file changed, 5 insertions(+)"
+
+    const stats = parseCommitStats(output)
+
+    expect(stats.filesChanged).toBe(1)
+    expect(stats.insertions).toBe(5)
+    expect(stats.deletions).toBe(0)
+  })
+
+  test("parses stat with only deletions", () => {
+    const output = " 2 files changed, 10 deletions(-)"
+
+    const stats = parseCommitStats(output)
+
+    expect(stats.filesChanged).toBe(2)
+    expect(stats.insertions).toBe(0)
+    expect(stats.deletions).toBe(10)
+  })
+
+  test("handles empty output", () => {
+    expect(parseCommitStats("")).toEqual({ insertions: 0, deletions: 0, filesChanged: 0 })
+    expect(parseCommitStats("  \n  ")).toEqual({ insertions: 0, deletions: 0, filesChanged: 0 })
+  })
+
+  test("parses singular file changed", () => {
+    const output = " 1 file changed, 1 insertion(+), 1 deletion(-)"
+
+    const stats = parseCommitStats(output)
+
+    expect(stats.filesChanged).toBe(1)
+    expect(stats.insertions).toBe(1)
+    expect(stats.deletions).toBe(1)
+  })
+})
+
+// ── parseCommitFiles ──────────────────────────────────────────
+
+describe("parseCommitFiles", () => {
+  test("parses modified, added, and deleted files", () => {
+    const output = [
+      "M\tsrc/core/git/commands.ts",
+      "A\tsrc/ui/views/new-view.tsx",
+      "D\tsrc/old-file.ts",
+    ].join("\n")
+
+    const files = parseCommitFiles(output)
+
+    expect(files).toHaveLength(3)
+    expect(files[0]).toEqual({ path: "src/core/git/commands.ts", status: FILE_STATUS.MODIFIED, staged: false })
+    expect(files[1]).toEqual({ path: "src/ui/views/new-view.tsx", status: FILE_STATUS.ADDED, staged: false })
+    expect(files[2]).toEqual({ path: "src/old-file.ts", status: FILE_STATUS.DELETED, staged: false })
+  })
+
+  test("parses renamed files with score", () => {
+    const output = "R100\tsrc/old-name.ts\tsrc/new-name.ts"
+
+    const files = parseCommitFiles(output)
+
+    expect(files).toHaveLength(1)
+    expect(files[0]).toEqual({
+      path: "src/new-name.ts",
+      status: FILE_STATUS.RENAMED,
+      staged: false,
+      oldPath: "src/old-name.ts",
+    })
+  })
+
+  test("parses copied files", () => {
+    const output = "C095\tsrc/original.ts\tsrc/copy.ts"
+
+    const files = parseCommitFiles(output)
+
+    expect(files).toHaveLength(1)
+    expect(files[0]).toEqual({
+      path: "src/copy.ts",
+      status: FILE_STATUS.COPIED,
+      staged: false,
+      oldPath: "src/original.ts",
+    })
+  })
+
+  test("handles empty output", () => {
+    expect(parseCommitFiles("")).toEqual([])
+    expect(parseCommitFiles("  \n  ")).toEqual([])
+  })
+
+  test("handles files with spaces in path", () => {
+    const output = "M\tsrc/my file.ts"
+
+    const files = parseCommitFiles(output)
+
+    expect(files).toHaveLength(1)
+    expect(files[0]!.path).toBe("src/my file.ts")
   })
 })

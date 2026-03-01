@@ -73,6 +73,14 @@ export interface GitStash {
   date: string
 }
 
+// ── Commit Stats ──────────────────────────────────────────────
+
+export interface CommitStats {
+  insertions: number
+  deletions: number
+  filesChanged: number
+}
+
 // ── Diff Interfaces ───────────────────────────────────────────
 
 export interface DiffLine {

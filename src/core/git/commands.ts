@@ -2,15 +2,20 @@
 // Typed async wrappers around git CLI commands
 
 import { exec } from "../../lib/shell.ts"
-import { parseBranches, parseDiff, parseLog, parseStash, parseStatus } from "./parser.ts"
-import type { FileDiff, GitBranch, GitCommit, GitStash, GitStatus } from "./types.ts"
+import { parseBranches, parseCommitFiles, parseCommitStats, parseDiff, parseLog, parseStash, parseStatus } from "./parser.ts"
+import type { CommitStats, FileDiff, GitBranch, GitCommit, GitFile, GitStash, GitStatus } from "./types.ts"
 
 // ── Error ─────────────────────────────────────────────────────
 
 export class GitCommandError extends Error {
+  readonly command: string
+  readonly stderr: string
+
   constructor(command: string, stderr: string) {
     super(`git ${command} failed: ${stderr.trim()}`)
     this.name = "GitCommandError"
+    this.command = command
+    this.stderr = stderr.trim()
   }
 }
 
@@ -94,6 +99,13 @@ export async function getStashList(cwd?: string): Promise<GitStash[]> {
   return parseStash(result.stdout)
 }
 
+export async function getRawDiff(opts?: { staged?: boolean; path?: string; cwd?: string }): Promise<string> {
+  const args = ["diff"]
+  if (opts?.staged) args.push("--cached")
+  if (opts?.path) args.push("--", opts.path)
+  return run(args, opts?.cwd)
+}
+
 // ── Mutations ─────────────────────────────────────────────────
 
 export async function stageFile(path: string, cwd?: string): Promise<void> {
@@ -142,12 +154,63 @@ export async function rebaseBranch(onto: string, cwd?: string): Promise<void> {
   await run(["rebase", onto], cwd)
 }
 
+export async function getCommitFiles(hash: string, cwd?: string): Promise<GitFile[]> {
+  const stdout = await run(["diff-tree", "--no-commit-id", "--name-status", "-r", hash], cwd)
+  return parseCommitFiles(stdout)
+}
+
+export async function getCommitDiff(hash: string, opts?: {
+  path?: string
+  cwd?: string
+}): Promise<FileDiff[]> {
+  // For the root commit (no parent), use --root flag with diff-tree
+  // Otherwise use standard diff between parent and commit
+  const args = ["diff"]
+
+  try {
+    // Try parent ref first: <hash>^..<hash>
+    const diffArgs = [...args, `${hash}^..${hash}`]
+    if (opts?.path) diffArgs.push("--", opts.path)
+    const stdout = await run(diffArgs, opts?.cwd)
+    return parseDiff(stdout)
+  } catch {
+    // Likely first commit — no parent exists. Use diff against empty tree.
+    const emptyTree = "4b825dc642cb6eb9a060e54bf899d15363da7b23"
+    const rootArgs = [...args, `${emptyTree}..${hash}`]
+    if (opts?.path) rootArgs.push("--", opts.path)
+    const stdout = await run(rootArgs, opts?.cwd)
+    return parseDiff(stdout)
+  }
+}
+
+export async function getCommitStats(hash: string, cwd?: string): Promise<CommitStats> {
+  try {
+    const stdout = await run(["diff", "--stat", `${hash}^..${hash}`], cwd)
+    return parseCommitStats(stdout)
+  } catch {
+    // First commit — diff against empty tree
+    const emptyTree = "4b825dc642cb6eb9a060e54bf899d15363da7b23"
+    const stdout = await run(["diff", "--stat", `${emptyTree}..${hash}`], cwd)
+    return parseCommitStats(stdout)
+  }
+}
+
 export async function cherryPick(hash: string, cwd?: string): Promise<void> {
   await run(["cherry-pick", hash], cwd)
 }
 
-export async function revertCommit(hash: string, cwd?: string): Promise<void> {
-  await run(["revert", "--no-edit", hash], cwd)
+export async function revertCommit(
+  hash: string,
+  opts?: { noCommit?: boolean; cwd?: string },
+): Promise<void> {
+  const args = ["revert"]
+  if (opts?.noCommit) {
+    args.push("--no-commit")
+  } else {
+    args.push("--no-edit")
+  }
+  args.push(hash)
+  await run(args, opts?.cwd)
 }
 
 export async function stashSave(message?: string, cwd?: string): Promise<void> {

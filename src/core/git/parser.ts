@@ -2,6 +2,7 @@
 // Porcelain parsers for git CLI output
 
 import type {
+  CommitStats,
   DiffHunk,
   DiffLine,
   DiffLineType,
@@ -198,9 +199,16 @@ function parseSingleDiff(raw: string): FileDiff | null {
   const aPath = diffMatch[1]!
   const bPath = diffMatch[2]!
 
-  // Detect binary
+  // Detect binary — git outputs these as standalone lines (no +/-/space prefix):
+  //   "Binary files a/foo.png and b/foo.png differ"
+  //   "Binary files /dev/null and b/foo.png differ"
+  //   "GIT binary patch"
+  // Content lines (starting with +/-/space) must NOT trigger this check,
+  // otherwise text files discussing "Binary files" would false-positive.
   const isBinary = lines.some(
-    (l) => l.includes("Binary files") || l.includes("GIT binary patch")
+    (l) =>
+      (l.startsWith("Binary files ") && l.endsWith(" differ")) ||
+      l.startsWith("GIT binary patch"),
   )
 
   if (isBinary) {
@@ -481,4 +489,83 @@ export function parseStash(output: string): GitStash[] {
   }
 
   return stashes
+}
+
+// ── Commit Stats Parser ──────────────────────────────────────
+
+/**
+ * Parses the summary line from `git diff --stat`:
+ *   " 3 files changed, 42 insertions(+), 15 deletions(-)"
+ *
+ * Handles edge cases:
+ *   " 1 file changed, 5 insertions(+)"       (no deletions)
+ *   " 2 files changed, 10 deletions(-)"       (no insertions)
+ *   ""                                         (empty commit)
+ */
+export function parseCommitStats(output: string): CommitStats {
+  const result: CommitStats = { insertions: 0, deletions: 0, filesChanged: 0 }
+
+  if (!output.trim()) return result
+
+  // The summary line is the last non-empty line
+  const lines = output.split("\n").filter(Boolean)
+  const summary = lines[lines.length - 1]
+  if (!summary) return result
+
+  const filesMatch = summary.match(/(\d+) files? changed/)
+  if (filesMatch) result.filesChanged = parseInt(filesMatch[1]!, 10)
+
+  const insertMatch = summary.match(/(\d+) insertions?\(\+\)/)
+  if (insertMatch) result.insertions = parseInt(insertMatch[1]!, 10)
+
+  const deleteMatch = summary.match(/(\d+) deletions?\(-\)/)
+  if (deleteMatch) result.deletions = parseInt(deleteMatch[1]!, 10)
+
+  return result
+}
+
+// ── Commit Files Parser ──────────────────────────────────────
+
+/**
+ * Parses output from `git diff-tree --no-commit-id --name-status -r <hash>`:
+ *   "M\tsrc/core/git/commands.ts"
+ *   "A\tsrc/ui/views/new-view.tsx"
+ *   "D\tsrc/old-file.ts"
+ *   "R100\told-path.ts\tnew-path.ts"
+ */
+export function parseCommitFiles(output: string): GitFile[] {
+  if (!output.trim()) return []
+
+  const lines = output.split("\n")
+  const files: GitFile[] = []
+
+  for (const line of lines) {
+    if (!line) continue
+
+    const parts = line.split("\t")
+    if (parts.length < 2) continue
+
+    const rawStatus = parts[0]!
+    // Rename/copy status includes a score: R100, C095 — extract just the letter
+    const statusChar = rawStatus[0]!
+    const status = STATUS_MAP[statusChar] ?? FILE_STATUS.MODIFIED
+
+    if (statusChar === "R" || statusChar === "C") {
+      // Format: R100\toldPath\tnewPath
+      files.push({
+        path: parts[2] ?? parts[1]!,
+        status,
+        staged: false,
+        oldPath: parts[1],
+      })
+    } else {
+      files.push({
+        path: parts[1]!,
+        status,
+        staged: false,
+      })
+    }
+  }
+
+  return files
 }
