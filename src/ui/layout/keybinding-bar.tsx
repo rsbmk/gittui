@@ -1,15 +1,15 @@
 // src/ui/layout/keybinding-bar.tsx
 // Bottom bar — shows contextual keybinding hints
 
-import { createMemo, For } from "solid-js"
-import { activeTab } from "../../state/ui.ts"
+import { createMemo, For, Show } from "solid-js"
+import { activeTab, statusMessage } from "../../state/ui.ts"
 import { getBindingsForContext, type Keybinding } from "../../state/keybindings.ts"
 
 // Only show the most useful bindings per context (fits one line)
 const PRIORITY_ACTIONS: Record<string, string[]> = {
-  files: ["stage", "stageAll", "commit", "discard", "switchPanel", "quit"],
+  files: ["stage", "stageAll", "commit", "ai-commit", "discard", "switchPanel", "quit"],
   branches: ["checkout", "newBranch", "deleteBranch", "merge", "switchPanel", "quit"],
-  commits: ["viewCommit", "cherryPick", "revert", "switchPanel", "quit"],
+  commits: ["toggleBody", "cherryPick", "revert", "switchPanel", "quit"],
   stash: ["viewStash", "applyStash", "popStash", "saveStash", "switchPanel", "quit"],
   prs: ["switchPanel", "quit"],
 }
@@ -31,14 +31,19 @@ export function KeybindingBar() {
   return (
     <box flexDirection="row" width="100%" height={1} backgroundColor="#1e1e2e">
       <text fg="#6c7086"> </text>
-      <For each={hints()}>
-        {(binding) => (
-          <>
-            <text fg="#89b4fa">[{binding.key}]</text>
-            <text fg="#6c7086"> {binding.description}  </text>
-          </>
-        )}
-      </For>
+      <Show
+        when={!statusMessage()}
+        fallback={<text fg="#f9e2af">{statusMessage()}</text>}
+      >
+        <For each={hints()}>
+          {(binding) => (
+            <>
+              <text fg="#89b4fa">[{binding.key}]</text>
+              <text fg="#6c7086"> {binding.description}  </text>
+            </>
+          )}
+        </For>
+      </Show>
     </box>
   )
 }

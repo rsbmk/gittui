@@ -1,8 +1,14 @@
 // src/ui/layout/main-panel.tsx
-// Main content area — tab bar + view placeholder per active tab
+// Main content area — tab bar + active view
 
 import { For, Match, Switch } from "solid-js"
-import { activeTab, TAB_ID, type TabId } from "../../state/ui.ts"
+import { activeTab, activePanel, TAB_ID, PANEL, type TabId } from "../../state/ui.ts"
+import { FilesView } from "../views/files.tsx"
+import { BranchesView } from "../views/branches.tsx"
+import { CommitsView } from "../views/commits.tsx"
+import { StashView } from "../views/stash.tsx"
+import { PullRequestsView } from "../views/pull-requests.tsx"
+import { ViewBoundary } from "../components/error-boundary.tsx"
 
 // ── Tab definitions ──────────────────────────────────────────
 
@@ -31,22 +37,32 @@ export function MainPanel() {
       </box>
 
       {/* Content area */}
-      <box flexGrow={1} borderStyle="single" borderColor="#313244">
+      <box flexGrow={1} borderStyle="single" borderColor={activePanel() === PANEL.MAIN ? "#89b4fa" : "#313244"}>
         <Switch>
           <Match when={activeTab() === TAB_ID.FILES}>
-            <text fg="#6c7086"> Files view — diff will render here</text>
+            <ViewBoundary name="Files">
+              <FilesView />
+            </ViewBoundary>
           </Match>
           <Match when={activeTab() === TAB_ID.BRANCHES}>
-            <text fg="#6c7086"> Branches view — list will render here</text>
+            <ViewBoundary name="Branches">
+              <BranchesView />
+            </ViewBoundary>
           </Match>
           <Match when={activeTab() === TAB_ID.COMMITS}>
-            <text fg="#6c7086"> Commits view — log will render here</text>
+            <ViewBoundary name="Commits">
+              <CommitsView />
+            </ViewBoundary>
           </Match>
           <Match when={activeTab() === TAB_ID.STASH}>
-            <text fg="#6c7086"> Stash view — entries will render here</text>
+            <ViewBoundary name="Stash">
+              <StashView />
+            </ViewBoundary>
           </Match>
           <Match when={activeTab() === TAB_ID.PRS}>
-            <text fg="#6c7086"> PRs view — pull requests will render here</text>
+            <ViewBoundary name="PRs">
+              <PullRequestsView />
+            </ViewBoundary>
           </Match>
         </Switch>
       </box>
