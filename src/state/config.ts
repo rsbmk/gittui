@@ -2,11 +2,13 @@
 // Reactive config + theme signals — loaded once at startup
 
 import { createSignal } from "solid-js"
-import type { GuitConfig, GeneralConfig, KeybindingsConfig, KeybindingPreset } from "../core/config/schema.ts"
+import type { GuitConfig, GeneralConfig, KeybindingsConfig, KeybindingPreset, DiffConfig } from "../core/config/schema.ts"
 import type { GuitTheme } from "../lib/theme.ts"
+import type { SyntaxStyle } from "@opentui/core"
 import { DEFAULT_CONFIG } from "../core/config/defaults.ts"
 import { loadConfig, saveConfig } from "../core/config/loader.ts"
 import { loadTheme } from "../lib/theme.ts"
+import { buildSyntaxStyle } from "../lib/syntax/create-style.ts"
 import { initKeybindings } from "./keybindings.ts"
 import { setSidebarWidth, setSidebarVisible, setActiveTab, showStatusMessage } from "./ui.ts"
 
@@ -47,6 +49,13 @@ const [theme, setTheme] = createSignal<GuitTheme>({
 })
 export { theme, setTheme }
 
+// ── Syntax Style Signal ──────────────────────────────────────
+
+const [syntaxStyle, setSyntaxStyle] = createSignal<SyntaxStyle | undefined>(
+  buildSyntaxStyle(DEFAULT_CONFIG.diff.syntax_theme),
+)
+export { syntaxStyle }
+
 // ── Color accessor ───────────────────────────────────────────
 
 export function color(key: keyof GuitTheme["colors"]): string {
@@ -69,6 +78,9 @@ export async function initConfig(): Promise<void> {
 
   // Apply keybinding preset + custom overrides
   initKeybindings(cfg.keybindings.preset, cfg.keybindings.custom)
+
+  // Build syntax highlighting style
+  setSyntaxStyle(buildSyntaxStyle(cfg.diff.syntax_theme, cfg.syntax.overrides))
 }
 
 // ── Config Update ────────────────────────────────────────────
@@ -95,6 +107,11 @@ export async function updateConfigField<S extends keyof GuitConfig>(
       setSidebarWidth(value as number)
     } else if (f === "sidebar_collapsed") {
       setSidebarVisible(!(value as boolean))
+    }
+  } else if (section === "diff") {
+    const f = field as keyof DiffConfig
+    if (f === "syntax_theme") {
+      setSyntaxStyle(buildSyntaxStyle(value as string, updated.syntax.overrides))
     }
   } else if (section === "keybindings") {
     const f = field as keyof KeybindingsConfig

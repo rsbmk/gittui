@@ -40,6 +40,11 @@ export interface DiffConfig {
   view: DiffView
   context_lines: number
   show_line_numbers: boolean
+  syntax_theme: string
+}
+
+export interface SyntaxConfig {
+  overrides: Record<string, string>
 }
 
 export interface GithubConfig {
@@ -57,4 +62,5 @@ export interface GuitConfig {
   diff: DiffConfig
   github: GithubConfig
   ai: AIConfig
+  syntax: SyntaxConfig
 }

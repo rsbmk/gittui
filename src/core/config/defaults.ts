@@ -18,6 +18,7 @@ export const DEFAULT_CONFIG: GuitConfig = {
     view: "unified",
     context_lines: 3,
     show_line_numbers: true,
+    syntax_theme: "catppuccin-mocha",
   },
   github: {
     auto_fetch_prs: true,
@@ -25,5 +26,8 @@ export const DEFAULT_CONFIG: GuitConfig = {
   ai: {
     agent: null,
     commit_prompt: null,
+  },
+  syntax: {
+    overrides: {},
   },
 }

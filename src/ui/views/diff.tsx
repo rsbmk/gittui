@@ -4,7 +4,8 @@
 import { Show, type Accessor } from "solid-js"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import type { FileDiff } from "../../core/git/types.ts"
-import { config } from "../../state/config.ts"
+import { config, syntaxStyle } from "../../state/config.ts"
+import { getFiletype } from "../../lib/syntax/filetype-map.ts"
 
 // ── Scroll state ─────────────────────────────────────────────
 
@@ -71,6 +72,8 @@ export function DiffView(props: DiffViewProps) {
                     diff={fileDiff().raw}
                     view={config().diff.view}
                     showLineNumbers={config().diff.show_line_numbers}
+                    filetype={getFiletype(fileDiff().path)}
+                    syntaxStyle={syntaxStyle()}
                     addedBg="#1a3a1a"
                     removedBg="#3a1a1a"
                     addedSignColor="#a6e3a1"

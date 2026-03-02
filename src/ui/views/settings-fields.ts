@@ -116,6 +116,14 @@ export const SETTINGS_SECTIONS: SectionDef[] = [
         section: "diff",
         getValue: (c) => c.diff.show_line_numbers,
       },
+      {
+        key: "syntax_theme",
+        label: "Syntax Theme",
+        type: FIELD_TYPE.CYCLE,
+        section: "diff",
+        options: ["catppuccin-mocha", "dracula", "nord", "github-dark", "one-dark", "none"],
+        getValue: (c) => c.diff.syntax_theme,
+      },
     ],
   },
   {
