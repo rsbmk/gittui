@@ -195,7 +195,7 @@ function CommitDialogContent(props: CommitDialogProps) {
       {/* Footer — keybinding hints */}
       <box flexDirection="row" gap={2}>
         <box flexDirection="row">
-          <text fg={color("accent")}>[Enter]</text>
+          <text fg={color("accent")}>[Ctrl+Enter]</text>
           <text fg={color("muted")}> commit</text>
         </box>
         <box flexDirection="row">

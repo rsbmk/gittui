@@ -16,20 +16,19 @@ export interface Keybinding {
 // ── Textarea Widget Bindings ──────────────────────────────────
 //
 // Reusable keybinding presets for <textarea> widgets in dialogs.
-// Enter submits, Shift+Enter inserts newline for multi-line messages.
+// Enter inserts newline (standard textarea behavior), Ctrl+Enter submits.
 //
-// Terminal emulators (Ghostty, Kitty, iTerm2, etc.) report modifier+Enter
-// inconsistently — some send "linefeed", others "return" with flags.
-// Using bare Enter for submit avoids all cross-terminal issues.
+// OpenTUI's textarea defaults map bare "return" → newline, which is correct.
+// We only override Ctrl+Enter (and meta+Enter) to trigger submit.
+// This avoids cross-terminal issues — Shift+Enter is unreliable because
+// many terminals don't send the shift flag and just emit bare "\r".
 //
 // Note: action values use `as const` because TextareaAction is not exported
 // from @opentui/core index — literal narrowing satisfies the type constraint.
 
 export const SUBMIT_TEXTAREA_BINDINGS = [
-  { name: "return", action: "submit" as const },
-  { name: "linefeed", action: "newline" as const },
-  { name: "return", shift: true, action: "newline" as const },
-  { name: "return", ctrl: true, action: "newline" as const },
+  { name: "return", ctrl: true, action: "submit" as const },
+  { name: "return", meta: true, action: "submit" as const },
 ]
 
 // ── Shared (context-specific bindings identical across presets) ─
@@ -58,6 +57,7 @@ const COMMITS_BINDINGS: Keybinding[] = [
   { key: "enter", action: "viewCommit", context: "commits", description: "View commit" },
   { key: "c", action: "cherryPick", context: "commits", description: "Cherry-pick" },
   { key: "r", action: "revert", context: "commits", description: "Revert commit" },
+  { key: "u", action: "undo", context: "commits", description: "Undo commit(s)" },
   { key: "b", action: "toggleBody", context: "commits", description: "Toggle body" },
 ]
 
