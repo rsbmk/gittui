@@ -16,19 +16,23 @@ export interface Keybinding {
 // ── Textarea Widget Bindings ──────────────────────────────────
 //
 // Reusable keybinding presets for <textarea> widgets in dialogs.
-// Enter inserts newline (standard textarea behavior), Ctrl+Enter submits.
+// Enter inserts newline (standard textarea behavior), Ctrl+S submits.
 //
-// OpenTUI's textarea defaults map bare "return" → newline, which is correct.
-// We only override Ctrl+Enter (and meta+Enter) to trigger submit.
-// This avoids cross-terminal issues — Shift+Enter is unreliable because
-// many terminals don't send the shift flag and just emit bare "\r".
+// OpenTUI's textarea defaults already map:
+//   - bare "return" → newline (Enter = new line)
+//   - "return" + meta → submit (Option+Enter on macOS)
+//
+// We add Ctrl+S as the PRIMARY submit trigger because modifier+Enter
+// combos (Ctrl+Enter, Shift+Enter) are unreliable across terminal
+// emulators — even with the kitty keyboard protocol, Ghostty and others
+// report inconsistent modifier flags for Enter-based combos.
+// Ctrl+S is a low-level ctrl+letter (0x13) that works in 100% of terminals.
 //
 // Note: action values use `as const` because TextareaAction is not exported
 // from @opentui/core index — literal narrowing satisfies the type constraint.
 
 export const SUBMIT_TEXTAREA_BINDINGS = [
-  { name: "return", ctrl: true, action: "submit" as const },
-  { name: "return", meta: true, action: "submit" as const },
+  { name: "s", ctrl: true, action: "submit" as const },
 ]
 
 // ── Shared (context-specific bindings identical across presets) ─
