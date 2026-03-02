@@ -18,22 +18,22 @@ import {
 let tmpDir: string
 
 beforeEach(async () => {
-  tmpDir = await mkdtemp(join(tmpdir(), "guit-log-test-"))
+  tmpDir = await mkdtemp(join(tmpdir(), "gittui-log-test-"))
   setLogPath(tmpDir)
   // Clear debug env vars for isolation
-  delete process.env.GUIT_DEBUG
-  delete process.env.GUIT_LOG_LEVEL
+  delete process.env.GITTUI_DEBUG
+  delete process.env.GITTUI_LOG_LEVEL
 })
 
 afterEach(async () => {
   resetLogPath()
-  delete process.env.GUIT_DEBUG
-  delete process.env.GUIT_LOG_LEVEL
+  delete process.env.GITTUI_DEBUG
+  delete process.env.GITTUI_LOG_LEVEL
   await rm(tmpDir, { recursive: true, force: true })
 })
 
 function logFilePath(): string {
-  return join(tmpDir, "guit.log")
+  return join(tmpDir, "gittui.log")
 }
 
 async function readLog(): Promise<string> {
@@ -54,15 +54,15 @@ describe("logger", () => {
     expect(new Date(match![1]!).toISOString()).toBe(match![1]!)
   })
 
-  test("skips debug when GUIT_DEBUG not set", async () => {
+  test("skips debug when GITTUI_DEBUG not set", async () => {
     await debug("this should be skipped")
 
     const exists = await Bun.file(logFilePath()).exists()
     expect(exists).toBe(false)
   })
 
-  test("writes debug when GUIT_DEBUG=1", async () => {
-    process.env.GUIT_DEBUG = "1"
+  test("writes debug when GITTUI_DEBUG=1", async () => {
+    process.env.GITTUI_DEBUG = "1"
 
     await debug("debug trace")
 
@@ -71,8 +71,8 @@ describe("logger", () => {
     expect(content).toContain("debug trace")
   })
 
-  test("writes debug when GUIT_LOG_LEVEL=debug", async () => {
-    process.env.GUIT_LOG_LEVEL = "debug"
+  test("writes debug when GITTUI_LOG_LEVEL=debug", async () => {
+    process.env.GITTUI_LOG_LEVEL = "debug"
 
     await debug("verbose output")
 
@@ -113,7 +113,7 @@ describe("logger", () => {
 
     await info("creating dirs")
 
-    const content = await Bun.file(join(nested, "guit.log")).text()
+    const content = await Bun.file(join(nested, "gittui.log")).text()
     expect(content).toContain("creating dirs")
   })
 
@@ -138,7 +138,7 @@ describe("logger", () => {
   })
 
   test("log function accepts all levels via LOG_LEVEL const", async () => {
-    process.env.GUIT_DEBUG = "1"
+    process.env.GITTUI_DEBUG = "1"
 
     await log(LOG_LEVEL.DEBUG, "d")
     await log(LOG_LEVEL.INFO, "i")

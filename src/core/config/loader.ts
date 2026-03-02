@@ -1,5 +1,5 @@
 // src/core/config/loader.ts
-// TOML config loader — reads ~/.config/guit/config.toml, merges with defaults
+// TOML config loader — reads ~/.config/gittui/config.toml, merges with defaults
 
 import { parse, stringify } from "smol-toml"
 import { homedir } from "node:os"
@@ -10,7 +10,7 @@ import type { GuitConfig } from "./schema.ts"
 
 // ── Paths (overridable for testing) ───────────────────────────
 
-let configDir = join(homedir(), ".config", "guit")
+let configDir = join(homedir(), ".config", "gittui")
 let configFile = join(configDir, "config.toml")
 
 export function getConfigPaths(): { configDir: string; configFile: string } {
@@ -23,7 +23,7 @@ export function setConfigPaths(dir: string): void {
 }
 
 export function resetConfigPaths(): void {
-  configDir = join(homedir(), ".config", "guit")
+  configDir = join(homedir(), ".config", "gittui")
   configFile = join(configDir, "config.toml")
 }
 

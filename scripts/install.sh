@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-REPO="rsbmk/guit"
-INSTALL_DIR="${GUIT_INSTALL_DIR:-/usr/local/bin}"
+REPO="rsbmk/gittui"
+INSTALL_DIR="${GITTUI_INSTALL_DIR:-/usr/local/bin}"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
@@ -25,30 +25,30 @@ if [ -z "$LATEST" ]; then
   exit 1
 fi
 
-URL="https://github.com/${REPO}/releases/download/v${LATEST}/guit-${OS}-${ARCH}.tar.gz"
+URL="https://github.com/${REPO}/releases/download/v${LATEST}/gittui-${OS}-${ARCH}.tar.gz"
 
-echo "Installing guit v${LATEST} (${OS}-${ARCH})..."
+echo "Installing gittui v${LATEST} (${OS}-${ARCH})..."
 echo "  from: ${URL}"
-echo "  to:   ${INSTALL_DIR}/guit"
+echo "  to:   ${INSTALL_DIR}/gittui"
 echo ""
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-curl -fsSL "$URL" -o "${TMP}/guit.tar.gz"
-tar xzf "${TMP}/guit.tar.gz" -C "$TMP"
+curl -fsSL "$URL" -o "${TMP}/gittui.tar.gz"
+tar xzf "${TMP}/gittui.tar.gz" -C "$TMP"
 
 # Install - try without sudo first, fall back to sudo
 if [ -w "$INSTALL_DIR" ]; then
-  mv "${TMP}/guit" "${INSTALL_DIR}/guit"
+  mv "${TMP}/gittui" "${INSTALL_DIR}/gittui"
 else
   echo "Need sudo to install to ${INSTALL_DIR}"
-  sudo mv "${TMP}/guit" "${INSTALL_DIR}/guit"
+  sudo mv "${TMP}/gittui" "${INSTALL_DIR}/gittui"
 fi
 
-chmod +x "${INSTALL_DIR}/guit"
+chmod +x "${INSTALL_DIR}/gittui"
 
 echo ""
-echo "guit v${LATEST} installed to ${INSTALL_DIR}/guit"
+echo "gittui v${LATEST} installed to ${INSTALL_DIR}/gittui"
 echo ""
-echo "Run 'guit' in a git repository to get started!"
+echo "Run 'gittui' in a git repository to get started!"

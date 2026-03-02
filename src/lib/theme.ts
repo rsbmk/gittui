@@ -79,7 +79,7 @@ const DEFAULT_THEME_NAME = "default-dark"
 
 // ── Theme loading ────────────────────────────────────────────
 
-const THEMES_DIR = join(homedir(), ".config", "guit", "themes")
+const THEMES_DIR = join(homedir(), ".config", "gittui", "themes")
 
 function isValidTheme(value: unknown): value is GuitTheme {
   if (typeof value !== "object" || value === null) return false
@@ -133,7 +133,7 @@ async function loadCustomTheme(name: string): Promise<GuitTheme | null> {
 }
 
 export async function loadTheme(name: string): Promise<GuitTheme> {
-  // 1. Check custom themes dir first (~/.config/guit/themes/<name>.json)
+  // 1. Check custom themes dir first (~/.config/gittui/themes/<name>.json)
   const custom = await loadCustomTheme(name)
   if (custom) return custom
 

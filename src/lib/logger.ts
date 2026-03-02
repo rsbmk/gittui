@@ -1,5 +1,5 @@
 // src/lib/logger.ts
-// File-based logger for TUI — writes to ~/.config/guit/guit.log, never stdout
+// File-based logger for TUI — writes to ~/.config/gittui/gittui.log, never stdout
 
 import { homedir } from "node:os"
 import { join } from "node:path"
@@ -20,8 +20,8 @@ export type LogLevel = (typeof LOG_LEVEL)[keyof typeof LOG_LEVEL]
 
 // ── Paths (overridable for testing) ───────────────────────────
 
-let logDir = join(homedir(), ".config", "guit")
-let logFile = join(logDir, "guit.log")
+let logDir = join(homedir(), ".config", "gittui")
+let logFile = join(logDir, "gittui.log")
 
 export function getLogPath(): { logDir: string; logFile: string } {
   return { logDir, logFile }
@@ -29,18 +29,18 @@ export function getLogPath(): { logDir: string; logFile: string } {
 
 export function setLogPath(dir: string): void {
   logDir = dir
-  logFile = join(dir, "guit.log")
+  logFile = join(dir, "gittui.log")
 }
 
 export function resetLogPath(): void {
-  logDir = join(homedir(), ".config", "guit")
-  logFile = join(logDir, "guit.log")
+  logDir = join(homedir(), ".config", "gittui")
+  logFile = join(logDir, "gittui.log")
 }
 
 // ── Internals ─────────────────────────────────────────────────
 
 function isDebugEnabled(): boolean {
-  return process.env.GUIT_DEBUG === "1" || process.env.GUIT_LOG_LEVEL === "debug"
+  return process.env.GITTUI_DEBUG === "1" || process.env.GITTUI_LOG_LEVEL === "debug"
 }
 
 function formatLine(level: LogLevel, message: string, data?: unknown): string {

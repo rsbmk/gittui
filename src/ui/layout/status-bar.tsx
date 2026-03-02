@@ -12,7 +12,7 @@ export function StatusBar() {
   return (
     <box flexDirection="row" width="100%" height={1} backgroundColor="#1e1e2e">
       <text fg="#89b4fa">
-        <b> guit </b>
+        <b> gittui </b>
       </text>
 
       <box flexGrow={1} />

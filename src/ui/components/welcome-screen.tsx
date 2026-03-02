@@ -38,7 +38,7 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
           borderColor={color("accent")}
         >
           {/* Header */}
-          <text fg={color("accent")}><b>  Welcome to guit!  </b></text>
+          <text fg={color("accent")}><b>  Welcome to gittui!  </b></text>
           <text>{""}</text>
           <text fg={color("fg")}> A modern terminal git client</text>
           <text>{""}</text>
@@ -67,7 +67,7 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
 
           {/* Footer */}
           <text>{""}</text>
-          <text fg={color("muted")}> Config: ~/.config/guit/config.toml</text>
+          <text fg={color("muted")}> Config: ~/.config/gittui/config.toml</text>
           <text>{""}</text>
           <text fg={color("accent")}> Press any key to continue...</text>
         </box>

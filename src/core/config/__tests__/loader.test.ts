@@ -90,7 +90,7 @@ describe("loadConfig", () => {
   let tmpDir: string
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "guit-test-"))
+    tmpDir = await mkdtemp(join(tmpdir(), "gittui-test-"))
     setConfigPaths(tmpDir)
   })
 
@@ -151,7 +151,7 @@ describe("saveConfig", () => {
   let tmpDir: string
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "guit-test-"))
+    tmpDir = await mkdtemp(join(tmpdir(), "gittui-test-"))
     setConfigPaths(tmpDir)
   })
 

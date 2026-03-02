@@ -1,5 +1,5 @@
 const VERSION = "0.1.0" as const
-const APP_NAME = "guit" as const
+const APP_NAME = "gittui" as const
 
 const USAGE = `
 ${APP_NAME} v${VERSION} - A terminal UI for git

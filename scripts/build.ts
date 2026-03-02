@@ -1,5 +1,5 @@
 // scripts/build.ts
-// Cross-platform binary builder for guit
+// Cross-platform binary builder for gittui
 
 export {} // Module marker — enables top-level await
 
@@ -16,7 +16,7 @@ async function build(target?: Target): Promise<void> {
   const targets = target ? [target] : TARGETS
   const version = (await Bun.file("package.json").json()).version
 
-  console.log(`\nBuilding guit v${version}...\n`)
+  console.log(`\nBuilding gittui v${version}...\n`)
 
   for (const t of targets) {
     const outDir = `./dist/${t.platform}-${t.arch}`
@@ -32,7 +32,7 @@ async function build(target?: Target): Promise<void> {
         "--compile",
         `--target=bun-${t.platform}-${t.arch}`,
         "--outfile",
-        `${outDir}/guit`,
+        `${outDir}/gittui`,
         "src/index.ts",
       ],
       {
@@ -49,7 +49,7 @@ async function build(target?: Target): Promise<void> {
       process.exit(1)
     }
 
-    console.log(`  ✓ ${label} → ${outDir}/guit`)
+    console.log(`  ✓ ${label} → ${outDir}/gittui`)
   }
 
   console.log(`\nDone! Binaries in ./dist/\n`)
