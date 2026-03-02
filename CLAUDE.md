@@ -32,7 +32,7 @@ test("hello world", () => {
 })
 ```
 
-## This Project (guit)
+## This Project (gittui)
 
 This is a terminal UI app using Solid.js + OpenTUI — NOT a web app.
 - No HTML, no React, no browser APIs, no express, no vite

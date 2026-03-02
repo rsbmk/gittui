@@ -1,4 +1,4 @@
-# AGENTS.md — guit
+# AGENTS.md — gittui
 
 Modern terminal git client built with Bun + Solid.js + OpenTUI.
 
@@ -96,7 +96,7 @@ Every file starts with a one-line descriptive comment:
   `GitCommandError` (git failures), `ShellTimeoutError` (timeouts)
 - Catch blocks use: `err instanceof Error ? err.message : String(err)`
 - Bare `catch {}` only for non-critical paths (e.g. silent fallback on optional data)
-- Log errors via `logError()` from `src/lib/logger.ts` (writes to `~/.config/guit/guit.log`, never stdout)
+- Log errors via `logError()` from `src/lib/logger.ts` (writes to `~/.config/gittui/gittui.log`, never stdout)
 - UI views wrapped in `ViewBoundary` error boundaries for graceful degradation
 
 ## Testing
@@ -140,7 +140,7 @@ src/
   core/                 # Business logic — NO ui/ or state/ imports
     git/                # Git CLI wrappers, parsers, types
     github/             # GitHub CLI (gh) wrappers, parsers, types
-    config/             # TOML config (schema, defaults, loader) — ~/.config/guit/config.toml
+    config/             # TOML config (schema, defaults, loader) — ~/.config/gittui/config.toml
     ai/                 # AI commit message generation via terminal agents (Claude, OpenCode, etc.)
   ui/                   # Solid.js components
     components/         # Reusable presentational components (ScrollList, FileTree, etc.)
@@ -156,6 +156,6 @@ scripts/                # Build + install scripts
 
 - Git operations: `Bun.spawn()` via `exec()` in `src/lib/shell.ts` — never JS git libraries
 - GitHub operations: `gh` CLI with `--json` flags — never GitHub REST client libraries
-- Config: TOML via `smol-toml` — loaded from `~/.config/guit/config.toml`, merged with defaults
+- Config: TOML via `smol-toml` — loaded from `~/.config/gittui/config.toml`, merged with defaults
 - Action registry (`src/state/actions.ts`): views register dialog handlers at mount,
   `global-keys.tsx` dispatches to them — decouples keyboard handling from view code
