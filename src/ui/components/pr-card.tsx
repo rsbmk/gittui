@@ -54,23 +54,23 @@ export function PRCard(props: PRCardProps) {
       paddingLeft={1}
     >
       {/* Line 1: number + title + author */}
-      <box flexDirection="row">
-        <text fg={props.selected ? "#89b4fa" : "#cdd6f4"}>
+      <box flexDirection="row" height={1}>
+        <text wrapMode="none" fg={props.selected ? "#89b4fa" : "#cdd6f4"}>
           {props.selected ? "▸" : " "}
         </text>
-        <text fg="#89b4fa">#{props.pr.number}</text>
-        <text fg="#cdd6f4"> {truncate(props.pr.title, 45)}</text>
-        <text fg="#6c7086"> {props.pr.author}</text>
+        <text wrapMode="none" fg="#89b4fa">#{props.pr.number}</text>
+        <text wrapMode="none" fg="#cdd6f4"> {truncate(props.pr.title, 45)}</text>
+        <text wrapMode="none" fg="#6c7086"> {props.pr.author}</text>
       </box>
 
       {/* Line 2: badges + stats + time */}
-      <box flexDirection="row" paddingLeft={3}>
-        <text fg={badge().color}>{badge().text}</text>
-        <text fg="#a6e3a1"> +{props.pr.additions}</text>
-        <text fg="#f38ba8"> -{props.pr.deletions}</text>
-        <text fg="#6c7086"> {props.pr.changedFiles} files</text>
+      <box flexDirection="row" height={1} paddingLeft={3}>
+        <text wrapMode="none" fg={badge().color}>{badge().text}</text>
+        <text wrapMode="none" fg="#a6e3a1"> +{props.pr.additions}</text>
+        <text wrapMode="none" fg="#f38ba8"> -{props.pr.deletions}</text>
+        <text wrapMode="none" fg="#6c7086"> {props.pr.changedFiles} files</text>
         <Show when={props.pr.updatedAt}>
-          <text fg="#6c7086"> {timeAgo(props.pr.updatedAt)}</text>
+          <text wrapMode="none" fg="#6c7086"> {timeAgo(props.pr.updatedAt)}</text>
         </Show>
       </box>
     </box>

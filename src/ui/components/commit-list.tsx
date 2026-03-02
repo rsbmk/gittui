@@ -41,28 +41,28 @@ export function CommitList(props: CommitListProps) {
               <Show
                 when={!props.compact}
                 fallback={
-                  <box flexDirection="row" backgroundColor={isSelected() ? "#313244" : undefined}>
-                    <text fg={isSelected() ? "#cdd6f4" : "#cdd6f4"}>
+                  <box flexDirection="row" height={1} backgroundColor={isSelected() ? "#313244" : undefined}>
+                    <text wrapMode="none" fg={isSelected() ? "#cdd6f4" : "#cdd6f4"}>
                       {isSelected() ? "▸" : " "}
                     </text>
-                    <text fg="#f9e2af">{commit.shortHash}</text>
-                    <text fg="#cdd6f4"> {truncate(commit.message, 18)}</text>
+                    <text wrapMode="none" fg="#f9e2af">{commit.shortHash}</text>
+                    <text wrapMode="none" fg="#cdd6f4"> {truncate(commit.message, 18)}</text>
                   </box>
                 }
               >
-                <box flexDirection="row" backgroundColor={isSelected() ? "#313244" : undefined}>
-                  <text fg={isSelected() ? "#cdd6f4" : "#cdd6f4"}>
+                <box flexDirection="row" height={1} backgroundColor={isSelected() ? "#313244" : undefined}>
+                  <text wrapMode="none" fg={isSelected() ? "#cdd6f4" : "#cdd6f4"}>
                     {isSelected() ? "▸" : " "}
                   </text>
-                  <text fg="#f9e2af">{commit.shortHash}</text>
-                  <text fg="#6c7086">  {commit.author}</text>
-                  <text fg="#585b70">  {commit.relativeDate}</text>
-                  <text fg="#cdd6f4">  {commit.message}</text>
+                  <text wrapMode="none" fg="#f9e2af">{commit.shortHash}</text>
+                  <text wrapMode="none" fg="#6c7086">  {commit.author}</text>
+                  <text wrapMode="none" fg="#585b70">  {commit.relativeDate}</text>
+                  <text wrapMode="none" fg="#cdd6f4">  {commit.message}</text>
                   {/* Ref badges */}
                   <Show when={commit.refs.length > 0}>
                     <For each={commit.refs}>
                       {(ref) => (
-                        <text fg="#89b4fa"> [{ref}]</text>
+                        <text wrapMode="none" fg="#89b4fa"> [{ref}]</text>
                       )}
                     </For>
                   </Show>

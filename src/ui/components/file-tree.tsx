@@ -47,6 +47,7 @@ export function FileTree(props: FileTreeProps) {
             <text
               bg={isSelected() ? "#313244" : undefined}
               fg={statusColor(file.status)}
+              wrapMode="none"
             >
               {isSelected() ? "▸" : " "} {file.status} {file.path}
             </text>

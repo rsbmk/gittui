@@ -62,17 +62,17 @@ export function BranchList(props: BranchListProps) {
             }
 
             return (
-              <box flexDirection="row" backgroundColor={isSelected() ? "#313244" : undefined}>
-                <text fg={isCurrentBranch() ? "#a6e3a1" : branch.remote ? "#6c7086" : "#cdd6f4"}>
+              <box flexDirection="row" height={1} backgroundColor={isSelected() ? "#313244" : undefined}>
+                <text wrapMode="none" fg={isCurrentBranch() ? "#a6e3a1" : branch.remote ? "#6c7086" : "#cdd6f4"}>
                   {isSelected() ? "▸" : " "}
                   {isCurrentBranch() ? "* " : "  "}
                   {branch.name}
                 </text>
                 <Show when={trackingInfo()}>
-                  <text fg="#f9e2af"> {trackingInfo()}</text>
+                  <text wrapMode="none" fg="#f9e2af"> {trackingInfo()}</text>
                 </Show>
                 <Show when={branch.upstream}>
-                  <text fg="#6c7086"> → {branch.upstream}</text>
+                  <text wrapMode="none" fg="#6c7086"> → {branch.upstream}</text>
                 </Show>
               </box>
             )
