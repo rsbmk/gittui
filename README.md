@@ -1,10 +1,10 @@
-# guit
+# gittui
 
 A modern terminal git client built with TypeScript, Solid.js, and OpenTUI. Covers the full git workflow — working tree, branches, commits, stash — plus GitHub PR integration via the `gh` CLI.
 
 ```
 +-------------------------------------------------------------+
-|  guit                        main . +3 ~2 -1    12:34       |
+|  gittui                      main . +3 ~2 -1    12:34       |
 +----------+--------------------------------------------------+
 |          |  Files | Branches | Commits | Stash | PRs         |
 | FILES    +--------------------------------------------------+
@@ -39,27 +39,27 @@ A modern terminal git client built with TypeScript, Solid.js, and OpenTUI. Cover
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew tap rsbmk/guit
-brew install guit
+brew tap rsbmk/gittui https://github.com/rsbmk/gittui
+brew install gittui
 ```
 
 ### curl (macOS / Linux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rsbmk/guit/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rsbmk/gittui/main/scripts/install.sh | sh
 ```
 
 To install to a custom directory:
 
 ```bash
-GUIT_INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/rsbmk/guit/main/scripts/install.sh | sh
+GITTUI_INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/rsbmk/gittui/main/scripts/install.sh | sh
 ```
 
 ### npm
 
 ```bash
 # Requires Bun to be installed
-npm install -g guit
+npm install -g gittui
 ```
 
 ### Build from Source
@@ -67,15 +67,15 @@ npm install -g guit
 Requires [Bun](https://bun.sh) v1.3+.
 
 ```bash
-git clone https://github.com/rsbmk/guit.git
-cd guit
+git clone https://github.com/rsbmk/gittui.git
+cd gittui
 bun install
 
 # Run directly
 bun run dev
 
 # Compile a standalone binary
-bun run build           # Binary for current platform → ./guit
+bun run build           # Binary for current platform → ./gittui
 bun run build:current   # Same, via build script
 bun run build:all       # Cross-compile for all 4 targets → ./dist/
 ```
@@ -85,13 +85,13 @@ Build targets: `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`. The com
 ## Usage
 
 ```bash
-guit              # Open in current directory
-guit /path/to/repo  # Open in a specific repository
-guit --help       # Show help
-guit --version    # Show version
+gittui              # Open in current directory
+gittui /path/to/repo  # Open in a specific repository
+gittui --help       # Show help
+gittui --version    # Show version
 ```
 
-guit must be run inside a git repository.
+gittui must be run inside a git repository.
 
 ## Keybindings
 
@@ -163,7 +163,7 @@ All keybindings are customizable — see [Configuration](#configuration).
 
 ## Configuration
 
-guit stores its config at `~/.config/guit/config.toml`. A default file is created on first launch.
+gittui stores its config at `~/.config/gittui/config.toml`. A default file is created on first launch.
 
 ```toml
 [general]
@@ -194,7 +194,7 @@ auto_fetch_prs = true
 
 Four built-in themes: `catppuccin-mocha` (default), `default-dark`, `nord`, `tokyo-night`.
 
-Custom themes are JSON files placed in `~/.config/guit/themes/<name>.json`:
+Custom themes are JSON files placed in `~/.config/gittui/themes/<name>.json`:
 
 ```json
 {
