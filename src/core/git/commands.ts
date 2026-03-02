@@ -241,6 +241,14 @@ export async function revertCommit(
   await run(args, opts?.cwd)
 }
 
+export async function resetToCommit(
+  hash: string,
+  mode: "soft" | "mixed" | "hard",
+  cwd?: string,
+): Promise<void> {
+  await run(["reset", `--${mode}`, hash], cwd)
+}
+
 export async function stashSave(message?: string, cwd?: string): Promise<void> {
   const args = ["stash", "push"]
   if (message) args.push("-m", message)

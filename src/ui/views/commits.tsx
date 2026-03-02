@@ -10,12 +10,14 @@ import { ConfirmDialog } from "../components/confirm-dialog.tsx"
 import { PromptDialog } from "../components/prompt-dialog.tsx"
 import { AlertDialog, formatGitError } from "../components/alert-dialog.tsx"
 import { RevertDialog, REVERT_MODE } from "../components/revert-dialog.tsx"
+import { ResetDialog, RESET_MODE } from "../components/reset-dialog.tsx"
 import { dialogConfig } from "../components/dialog-styles.ts"
 import { DiffView } from "./diff.tsx"
 import { repo, refreshCommits } from "../../state/repo.ts"
 import {
   cherryPick,
   revertCommit,
+  resetToCommit,
   getLog,
   getCommitFiles,
   getCommitDiff,
@@ -26,6 +28,7 @@ import { registerAction, unregisterAction } from "../../state/actions.ts"
 import { withDialog } from "../../state/ui.ts"
 import { config } from "../../state/config.ts"
 import type { RevertMode } from "../components/revert-dialog.tsx"
+import type { ResetMode } from "../components/reset-dialog.tsx"
 import type { CommitStats, FileDiff, GitCommit, GitFile } from "../../core/git/types.ts"
 
 // ── State ────────────────────────────────────────────────────
@@ -140,6 +143,13 @@ export async function handleRevert(mode: RevertMode = REVERT_MODE.COMMIT): Promi
   await refreshCommits()
 }
 
+export async function handleReset(hash: string, mode: ResetMode): Promise<void> {
+  await resetToCommit(hash, mode)
+  setCommitSelectedIndex(0)
+  await refreshStatus()
+  await refreshCommits()
+}
+
 // ── Body toggle ──────────────────────────────────────────────
 
 export function toggleCommitBody(): void {
@@ -186,6 +196,7 @@ export function CommitsView() {
 
     registerAction("cherryPick", confirmCherryPick)
     registerAction("revert", confirmRevert)
+    registerAction("undo", confirmUndo)
     registerAction("search", openFilterDialog)
     registerAction("toggleBody", toggleCommitBody)
   })
@@ -193,6 +204,7 @@ export function CommitsView() {
   onCleanup(() => {
     unregisterAction("cherryPick")
     unregisterAction("revert")
+    unregisterAction("undo")
     unregisterAction("search")
     unregisterAction("toggleBody")
   })
@@ -315,6 +327,76 @@ export function CommitsView() {
       } catch (err) {
         await showError("Revert Failed", err)
       }
+    }
+  }
+
+  async function confirmUndo(): Promise<void> {
+    const index = commitSelectedIndex()
+    const commits = repo.commits
+
+    // Edge case: HEAD selected (index 0) — nothing to undo
+    if (index === 0) {
+      await withDialog(() => dialog.alert({
+        content: (ctx) => () => (
+          <AlertDialog
+            title="Nothing to Undo"
+            message="Select a commit below HEAD to reset to."
+            dismiss={ctx.dismiss}
+            dialogId={ctx.dialogId}
+          />
+        ),
+        ...dialogConfig(),
+      }))
+      return
+    }
+
+    // The selected commit becomes the new HEAD — all commits above are removed
+    const target = commits[index]
+    if (!target) return
+
+    const commitsToRemove = commits.slice(0, index)
+
+    const mode = await withDialog(() => dialog.prompt<ResetMode>({
+      content: (ctx) => () => (
+        <ResetDialog
+          targetHash={target.shortHash}
+          targetMessage={target.message}
+          commitsToRemove={commitsToRemove}
+          resolve={ctx.resolve}
+          dismiss={ctx.dismiss}
+          dialogId={ctx.dialogId}
+        />
+      ),
+      ...dialogConfig(),
+    }))
+
+    if (!mode) return
+
+    // Hard mode requires extra confirmation — destructive and irreversible
+    if (mode === RESET_MODE.HARD) {
+      const confirmed = await withDialog(() => dialog.confirm({
+        content: (ctx) => () => (
+          <ConfirmDialog
+            title="Destructive Reset"
+            message={`Hard reset will permanently discard all changes from ${commitsToRemove.length} commit(s). This cannot be undone.`}
+            confirmLabel="confirm"
+            destructive={true}
+            resolve={ctx.resolve}
+            dismiss={ctx.dismiss}
+            dialogId={ctx.dialogId}
+          />
+        ),
+        fallback: false,
+        ...dialogConfig(),
+      }))
+
+      if (!confirmed) return
+    }
+
+    try {
+      await handleReset(target.hash, mode)
+    } catch (err) {
+      await showError("Reset Failed", err)
     }
   }
 
