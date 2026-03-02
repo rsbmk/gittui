@@ -2,25 +2,7 @@
 
 A modern terminal git client built with TypeScript, Solid.js, and OpenTUI. Covers the full git workflow — working tree, branches, commits, stash — plus GitHub PR integration via the `gh` CLI.
 
-```
-+-------------------------------------------------------------+
-|  guit                        main . +3 ~2 -1    12:34       |
-+----------+--------------------------------------------------+
-|          |  Files | Branches | Commits | Stash | PRs         |
-| FILES    +--------------------------------------------------+
-|          |                                                   |
-| M app.ts |  --- a/src/app.ts                                |
-| A new.ts |  +++ b/src/app.ts                                |
-| D old.ts |  @@ -10,6 +10,8 @@                               |
-|          |   import { foo } from './foo'                      |
-| STAGED   |  +import { bar } from './bar'                     |
-|          |  +import { baz } from './baz'                     |
-| M util.ts|   const x = 1                                     |
-|          |                                                   |
-+----------+--------------------------------------------------+
-| [Space] Stage  [c] Commit  [Tab] Switch panel  [?] Help      |
-+-------------------------------------------------------------+
-```
+<img width="1919" height="994" alt="image" src="https://github.com/user-attachments/assets/68ad2bc4-166d-4f99-9d87-1504c57c57d2" />
 
 ## Features
 
