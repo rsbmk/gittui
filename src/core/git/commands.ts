@@ -289,7 +289,7 @@ export async function stageHunk(patchContent: string, cwd?: string): Promise<voi
 
 // ── Conflict Resolution ───────────────────────────────────────
 
-export async function getMergeState(cwd?: string): Promise<MergeState> {
+export async function getMergeState(cwd?: string, existingStatus?: GitStatus): Promise<MergeState> {
   const gitDir = (await run(["rev-parse", "--git-dir"], cwd)).trim()
   const { stat } = await import("node:fs/promises")
   const { join } = await import("node:path")
@@ -315,11 +315,11 @@ export async function getMergeState(cwd?: string): Promise<MergeState> {
 
   const type = parseMergeState(mergeHead, rebaseDir, cherryPickHead, revertHead, mergeMsg)
 
-  // Count conflicted files from status
+  // Count conflicted files from status (reuse existing if provided)
   let conflictCount = 0
   let source: string | undefined
   if (type !== MERGE_STATE.NONE) {
-    const status = await getStatus(cwd)
+    const status = existingStatus ?? await getStatus(cwd)
     conflictCount = status.unstaged.filter(f => f.status === FILE_STATUS.UNMERGED).length
 
     // Try to extract source branch from MERGE_MSG

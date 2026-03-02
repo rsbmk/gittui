@@ -44,6 +44,11 @@ export async function refreshStatus(): Promise<void> {
   try {
     const status = await getStatus()
     setRepo("status", status)
+
+    // Always keep merge state in sync — passing the status we just fetched
+    // avoids a redundant getStatus() call inside getMergeState()
+    const mergeState = await getMergeState(undefined, status)
+    setRepo("mergeState", mergeState)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     logError("Failed to refresh status", { error: msg })
