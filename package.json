@@ -10,6 +10,14 @@
     "src/",
     "dist/"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rsbmk/guit.git"
+  },
+  "homepage": "https://github.com/rsbmk/guit",
+  "bugs": {
+    "url": "https://github.com/rsbmk/guit/issues"
+  },
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="guit-cli/guit"
+REPO="rsbmk/guit"
 INSTALL_DIR="${GUIT_INSTALL_DIR:-/usr/local/bin}"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')

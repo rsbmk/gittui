@@ -39,20 +39,20 @@ A modern terminal git client built with TypeScript, Solid.js, and OpenTUI. Cover
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew tap guit-cli/guit
+brew tap rsbmk/guit
 brew install guit
 ```
 
 ### curl (macOS / Linux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/guit-cli/guit/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rsbmk/guit/main/scripts/install.sh | sh
 ```
 
 To install to a custom directory:
 
 ```bash
-GUIT_INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/guit-cli/guit/main/scripts/install.sh | sh
+GUIT_INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/rsbmk/guit/main/scripts/install.sh | sh
 ```
 
 ### npm
@@ -67,7 +67,7 @@ npm install -g guit
 Requires [Bun](https://bun.sh) v1.3+.
 
 ```bash
-git clone https://github.com/guit-cli/guit.git
+git clone https://github.com/rsbmk/guit.git
 cd guit
 bun install
 
