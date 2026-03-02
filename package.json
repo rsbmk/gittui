@@ -2,6 +2,9 @@
   "name": "gittui",
   "version": "0.1.0",
   "description": "Modern terminal git client",
+  "license": "MIT",
+  "author": "rsbmk",
+  "keywords": ["git", "terminal", "tui", "cli", "lazygit", "solid", "opentui"],
   "type": "module",
   "bin": {
     "gittui": "./src/index.ts"
