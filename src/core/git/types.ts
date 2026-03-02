@@ -15,6 +15,20 @@ export const FILE_STATUS = {
 
 export type FileStatus = (typeof FILE_STATUS)[keyof typeof FILE_STATUS]
 
+// ── Unmerged Substatus ────────────────────────────────────────
+
+export const UNMERGED_STATUS = {
+  BOTH_MODIFIED: "UU",
+  BOTH_ADDED: "AA",
+  BOTH_DELETED: "DD",
+  ADDED_BY_US: "AU",
+  ADDED_BY_THEM: "UA",
+  DELETED_BY_US: "DU",
+  DELETED_BY_THEM: "UD",
+} as const
+
+export type UnmergedStatus = (typeof UNMERGED_STATUS)[keyof typeof UNMERGED_STATUS]
+
 // ── Diff Line Type ────────────────────────────────────────────
 
 export const DIFF_LINE_TYPE = {
@@ -32,6 +46,7 @@ export interface GitFile {
   status: FileStatus
   staged: boolean
   oldPath?: string
+  unmergedStatus?: UnmergedStatus
 }
 
 export interface GitStatus {
@@ -105,4 +120,24 @@ export interface FileDiff {
   hunks: DiffHunk[]
   binary: boolean
   raw: string
+}
+
+// ── Merge State ───────────────────────────────────────────────
+
+export const MERGE_STATE = {
+  NONE: "none",
+  MERGING: "merging",
+  REBASING: "rebasing",
+  CHERRY_PICKING: "cherry-picking",
+  REVERTING: "reverting",
+} as const
+
+export type MergeStateType = (typeof MERGE_STATE)[keyof typeof MERGE_STATE]
+
+export interface MergeState {
+  type: MergeStateType
+  /** The branch being merged/rebased, if detectable */
+  source?: string
+  /** Number of conflicted files */
+  conflictCount: number
 }

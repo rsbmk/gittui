@@ -13,8 +13,10 @@ import type {
   GitFile,
   GitStash,
   GitStatus,
+  MergeStateType,
+  UnmergedStatus,
 } from "./types"
-import { DIFF_LINE_TYPE, FILE_STATUS } from "./types"
+import { DIFF_LINE_TYPE, FILE_STATUS, MERGE_STATE, UNMERGED_STATUS } from "./types"
 
 // ── Status Parser ─────────────────────────────────────────────
 
@@ -150,15 +152,28 @@ function parseRenamedEntry(line: string, result: GitStatus): void {
   }
 }
 
+const UNMERGED_STATUS_MAP: Record<string, UnmergedStatus> = {
+  UU: UNMERGED_STATUS.BOTH_MODIFIED,
+  AA: UNMERGED_STATUS.BOTH_ADDED,
+  DD: UNMERGED_STATUS.BOTH_DELETED,
+  AU: UNMERGED_STATUS.ADDED_BY_US,
+  UA: UNMERGED_STATUS.ADDED_BY_THEM,
+  DU: UNMERGED_STATUS.DELETED_BY_US,
+  UD: UNMERGED_STATUS.DELETED_BY_THEM,
+}
+
 function parseUnmergedEntry(line: string, result: GitStatus): void {
   // Format: u XY sub m1 m2 m3 mW h1 h2 h3 path
   const parts = line.split(" ")
+  const xy = parts[1]!
   const path = parts.slice(10).join(" ")
+  const unmergedStatus = UNMERGED_STATUS_MAP[xy]
 
   result.unstaged.push({
     path,
     status: FILE_STATUS.UNMERGED,
     staged: false,
+    unmergedStatus,
   })
 }
 
@@ -568,4 +583,24 @@ export function parseCommitFiles(output: string): GitFile[] {
   }
 
   return files
+}
+
+// ── Merge State Parser ───────────────────────────────────────
+
+/**
+ * Determines merge state by checking for git state files.
+ * Called with the output of checking for .git/MERGE_HEAD, .git/REBASE_HEAD, etc.
+ */
+export function parseMergeState(
+  mergeHead: boolean,
+  rebaseDir: boolean,
+  cherryPickHead: boolean,
+  revertHead: boolean,
+  _mergeMsg: string | null,
+): MergeStateType {
+  if (mergeHead) return MERGE_STATE.MERGING
+  if (rebaseDir) return MERGE_STATE.REBASING
+  if (cherryPickHead) return MERGE_STATE.CHERRY_PICKING
+  if (revertHead) return MERGE_STATE.REVERTING
+  return MERGE_STATE.NONE
 }

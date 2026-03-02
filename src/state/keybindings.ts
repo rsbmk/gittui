@@ -45,6 +45,13 @@ const FILES_BINDINGS: Keybinding[] = [
   { key: "d", action: "discard", context: "files", description: "Discard changes" },
   { key: "n", action: "nextHunk", context: "files", description: "Next hunk" },
   { key: "p", action: "prevHunk", context: "files", description: "Previous hunk" },
+  { key: "o", action: "resolveConflict", context: "files", description: "Resolve conflict" },
+  { key: "t", action: "resolveTheirs", context: "files", description: "Accept theirs (conflict)" },
+  { key: "b", action: "resolveBoth", context: "files", description: "Accept both (conflict)" },
+  { key: "[", action: "prevConflict", context: "files", description: "Previous conflict" },
+  { key: "]", action: "nextConflict", context: "files", description: "Next conflict" },
+  { key: "A", action: "abortMerge", context: "files", description: "Abort merge/rebase" },
+  { key: "M", action: "continueMerge", context: "files", description: "Continue merge/rebase" },
 ]
 
 const BRANCHES_BINDINGS: Keybinding[] = [

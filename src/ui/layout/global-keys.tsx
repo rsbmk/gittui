@@ -24,17 +24,36 @@ import {
   type TabId,
 } from "../../state/ui.ts"
 import { findBinding } from "../../state/keybindings.ts"
-import { repo, refreshStatus } from "../../state/repo.ts"
+import { repo, refreshStatus, refreshMergeState } from "../../state/repo.ts"
 import {
   stageFile,
   unstageFile,
   stageAll as stageAllCmd,
   discardFile,
+  checkoutOurs,
+  checkoutTheirs,
+  markResolved,
+  mergeAbort,
+  mergeContinue,
+  rebaseAbort,
+  rebaseContinue,
+  getFileVersion,
 } from "../../core/git/commands.ts"
-import { isSelectedFileStaged, nextHunk, prevHunk, stageCurrentHunk } from "../views/files.tsx"
+import { MERGE_STATE } from "../../core/git/types.ts"
+import { isSelectedFileStaged, isSelectedFileUnmerged, nextHunk, prevHunk, stageCurrentHunk } from "../views/files.tsx"
 import { scrollDiffDown, scrollDiffUp } from "../views/diff.tsx"
+import {
+  nextConflict,
+  prevConflict,
+  resolveCurrentConflict,
+  conflictFile,
+  scrollConflictDown,
+  scrollConflictUp,
+} from "../views/conflict-view.tsx"
+import { RESOLVE_STRATEGY } from "../../core/git/conflict-parser.ts"
 import { useCommitDialog } from "../components/commit-modal.tsx"
 import { useAgentSelectDialog } from "../components/agent-select-modal.tsx"
+import { useConflictResolveDialog, CONFLICT_RESOLUTION } from "../components/conflict-resolve-modal.tsx"
 import { executeAction as executeRegisteredAction } from "../../state/actions.ts"
 import { detectInstalledAgents, generateCommitMessage } from "../../core/ai/agents.ts"
 import type { AgentId } from "../../core/ai/types.ts"
@@ -196,6 +215,12 @@ function setCurrentSelectedIndex(idx: number | ((prev: number) => number)): void
 // ── File action handlers ─────────────────────────────────────
 
 async function handleStageToggle(): Promise<void> {
+  // In conflict resolution mode, space resolves with "ours"
+  if (isSelectedFileUnmerged() && conflictFile()) {
+    await resolveCurrentConflict(RESOLVE_STRATEGY.OURS)
+    return
+  }
+
   if (activePanel() === PANEL.MAIN) {
     await stageCurrentHunk()
     return
@@ -248,6 +273,10 @@ const ACTION_HANDLERS: Record<string, () => void | Promise<void>> = {
   prevHunk,
   stageHunk: stageCurrentHunk,
 
+  // Conflict navigation
+  prevConflict,
+  nextConflict,
+
   // Branches
   checkout: handleCheckout,
   merge: handleMerge,
@@ -284,6 +313,7 @@ export function GlobalKeyHandler() {
   const renderer = useRenderer()
   const { openCommitDialog } = useCommitDialog()
   const { openAgentSelectDialog } = useAgentSelectDialog()
+  const { openConflictResolveDialog } = useConflictResolveDialog()
 
   // Register commit handler
   ACTION_HANDLERS["commit"] = async () => {
@@ -350,6 +380,110 @@ export function GlobalKeyHandler() {
     setHelpOverlayOpen(true)
   }
 
+  // Register conflict resolution dialog handler
+  ACTION_HANDLERS["resolveConflict"] = async () => {
+    const path = selectedFile()
+    if (!path || !isSelectedFileUnmerged()) {
+      showStatusMessage("No conflicted file selected")
+      return
+    }
+
+    const resolution = await openConflictResolveDialog(path)
+    if (!resolution) return // cancelled
+
+    try {
+      switch (resolution) {
+        case CONFLICT_RESOLUTION.OURS:
+          await checkoutOurs(path)
+          await markResolved(path)
+          break
+        case CONFLICT_RESOLUTION.THEIRS:
+          await checkoutTheirs(path)
+          await markResolved(path)
+          break
+        case CONFLICT_RESOLUTION.BOTH: {
+          // Read both versions, concatenate, and write
+          const ours = await getFileVersion(path, 2)
+          const theirs = await getFileVersion(path, 3)
+          await Bun.write(path, ours + "\n" + theirs)
+          await markResolved(path)
+          break
+        }
+        case CONFLICT_RESOLUTION.EDITOR: {
+          const editor = process.env.EDITOR ?? process.env.VISUAL ?? "vi"
+          const proc = Bun.spawn([editor, path], {
+            stdin: "inherit",
+            stdout: "inherit",
+            stderr: "inherit",
+          })
+          await proc.exited
+          // After editor closes, user needs to stage manually
+          showStatusMessage("File opened in editor — stage when resolved")
+          break
+        }
+      }
+
+      await refreshStatus()
+      await refreshMergeState()
+      showStatusMessage(`Resolved: ${path}`)
+    } catch (err) {
+      showStatusMessage(`Failed to resolve: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  // Phase 2: Inline conflict resolution
+  ACTION_HANDLERS["resolveTheirs"] = async () => {
+    if (!conflictFile()) return
+    await resolveCurrentConflict(RESOLVE_STRATEGY.THEIRS)
+  }
+
+  ACTION_HANDLERS["resolveBoth"] = async () => {
+    if (!conflictFile()) return
+    await resolveCurrentConflict(RESOLVE_STRATEGY.BOTH)
+  }
+
+  ACTION_HANDLERS["abortMerge"] = async () => {
+    const ms = repo.mergeState
+    if (!ms || ms.type === MERGE_STATE.NONE) {
+      showStatusMessage("No merge/rebase in progress")
+      return
+    }
+
+    try {
+      if (ms.type === MERGE_STATE.REBASING) {
+        await rebaseAbort()
+      } else {
+        await mergeAbort()
+      }
+      await refreshStatus()
+      await refreshMergeState()
+      showStatusMessage(`${ms.type} aborted`)
+    } catch (err) {
+      showStatusMessage(`Failed to abort: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  ACTION_HANDLERS["continueMerge"] = async () => {
+    const ms = repo.mergeState
+    if (!ms || ms.type === MERGE_STATE.NONE) {
+      showStatusMessage("No merge/rebase in progress")
+      return
+    }
+
+    try {
+      if (ms.type === MERGE_STATE.REBASING) {
+        await rebaseContinue()
+      } else {
+        await mergeContinue()
+      }
+      await refreshStatus()
+      await refreshMergeState()
+      showStatusMessage(`${ms.type} completed`)
+    } catch (err) {
+      showStatusMessage(`Failed to continue: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
   // ── Should main panel scroll a diff or navigate a list? ────
   // Files tab always scrolls diff. Stash tab scrolls when viewing content.
   // Commits tab scrolls when user enters diff scroll mode (Enter).
@@ -364,7 +498,11 @@ export function GlobalKeyHandler() {
   // Throttled navigation to prevent rapid-fire key presses
   const throttledMoveDown = throttle(() => {
     if (activePanel() === PANEL.MAIN && mainPanelHasDiff()) {
-      scrollDiffDown()
+      if (isSelectedFileUnmerged() && conflictFile()) {
+        scrollConflictDown()
+      } else {
+        scrollDiffDown()
+      }
       return
     }
     const max = currentListLength()
@@ -375,7 +513,11 @@ export function GlobalKeyHandler() {
 
   const throttledMoveUp = throttle(() => {
     if (activePanel() === PANEL.MAIN && mainPanelHasDiff()) {
-      scrollDiffUp()
+      if (isSelectedFileUnmerged() && conflictFile()) {
+        scrollConflictUp()
+      } else {
+        scrollDiffUp()
+      }
       return
     }
     setCurrentSelectedIndex((prev) => Math.max(prev - 1, 0))

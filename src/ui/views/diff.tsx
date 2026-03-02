@@ -3,8 +3,10 @@
 
 import { Show, type Accessor } from "solid-js"
 import type { ScrollBoxRenderable } from "@opentui/core"
+import { FILE_STATUS } from "../../core/git/types.ts"
 import type { FileDiff } from "../../core/git/types.ts"
 import { config, syntaxStyle } from "../../state/config.ts"
+import { repo } from "../../state/repo.ts"
 import { getFiletype } from "../../lib/syntax/filetype-map.ts"
 
 // ── Scroll state ─────────────────────────────────────────────
@@ -19,6 +21,14 @@ export function scrollDiffDown(): void {
 
 export function scrollDiffUp(): void {
   scrollboxRef?.scrollBy(-SCROLL_STEP)
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+
+function isFileUnmerged(path: string): boolean {
+  return repo.status?.unstaged.some(
+    (f) => f.path === path && f.status === FILE_STATUS.UNMERGED,
+  ) ?? false
 }
 
 // ── Props ────────────────────────────────────────────────────
@@ -43,12 +53,15 @@ export function DiffView(props: DiffViewProps) {
         {(fileDiff: Accessor<FileDiff>) => (
           <>
             {/* File header */}
-            <box height={1} backgroundColor="#1e1e2e" padding={1}>
+            <box height={1} backgroundColor="#1e1e2e" padding={1} flexDirection="row">
               <text fg="#89b4fa">
                 <b>{fileDiff().path}</b>
               </text>
               <Show when={fileDiff().oldPath}>
                 <text fg="#6c7086"> (renamed from {fileDiff().oldPath})</text>
+              </Show>
+              <Show when={isFileUnmerged(fileDiff().path)}>
+                <text fg="#f38ba8"> ⚡ CONFLICT — press [o] to resolve</text>
               </Show>
             </box>
 

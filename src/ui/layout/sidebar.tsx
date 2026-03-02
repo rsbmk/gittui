@@ -36,14 +36,19 @@ import {
   prSelectedIndex,
   setPRSelectedIndex,
 } from "../../state/prs.ts"
+import { FILE_STATUS } from "../../core/git/types.ts"
 import type { GitFile } from "../../core/git/types.ts"
 import { SectionSidebar } from "../components/settings/section-sidebar.tsx"
 import { sectionIndex } from "../views/settings.tsx"
 
 // ── File list helpers ────────────────────────────────────────
 
+function conflicts(): GitFile[] {
+  return repo.status?.unstaged.filter((f) => f.status === FILE_STATUS.UNMERGED) ?? []
+}
+
 function unstaged(): GitFile[] {
-  const modified = repo.status?.unstaged ?? []
+  const modified = (repo.status?.unstaged ?? []).filter((f) => f.status !== FILE_STATUS.UNMERGED)
   const untracked = repo.status?.untracked ?? []
   return [...modified, ...untracked]
 }
@@ -53,7 +58,7 @@ function staged(): GitFile[] {
 }
 
 function allFiles(): GitFile[] {
-  return [...unstaged(), ...staged()]
+  return [...conflicts(), ...unstaged(), ...staged()]
 }
 
 // ── Scroll follow ────────────────────────────────────────────
@@ -63,16 +68,22 @@ function selectedRow(): number {
   switch (tab) {
     case TAB_ID.FILES: {
       const idx = selectedIndex()
+      const conflictsLen = conflicts().length
       const unstagedLen = unstaged().length
       const stagedLen = staged().length
-      // Item in UNSTAGED section: header row + offset
-      if (unstagedLen > 0 && idx < unstagedLen) {
+      // Item in CONFLICTS section: header row + offset
+      if (conflictsLen > 0 && idx < conflictsLen) {
         return 1 + idx
       }
-      // Item in STAGED section: unstaged rows + STAGED header + offset
-      const rowsAbove = unstagedLen > 0 ? 1 + unstagedLen : 0
+      // Item in UNSTAGED section
+      const rowsAboveUnstaged = conflictsLen > 0 ? 1 + conflictsLen : 0
+      if (unstagedLen > 0 && idx < conflictsLen + unstagedLen) {
+        return rowsAboveUnstaged + 1 + (idx - conflictsLen)
+      }
+      // Item in STAGED section
+      const rowsAboveStaged = rowsAboveUnstaged + (unstagedLen > 0 ? 1 + unstagedLen : 0)
       if (stagedLen > 0) {
-        return rowsAbove + 1 + (idx - unstagedLen)
+        return rowsAboveStaged + 1 + (idx - conflictsLen - unstagedLen)
       }
       return 0
     }
@@ -125,10 +136,20 @@ export function Sidebar() {
         {/* Files tab — file tree */}
         <Show when={activeTab() === TAB_ID.FILES}>
           <FileTree
+            files={conflicts()}
+            title="CONFLICTS"
+            selectedIndex={selectedIndex()}
+            indexOffset={0}
+            onSelect={(file, idx) => {
+              setSelectedIndex(idx)
+              setSelectedFile(file.path)
+            }}
+          />
+          <FileTree
             files={unstaged()}
             title="UNSTAGED"
             selectedIndex={selectedIndex()}
-            indexOffset={0}
+            indexOffset={conflicts().length}
             onSelect={(file, idx) => {
               setSelectedIndex(idx)
               setSelectedFile(file.path)
@@ -138,7 +159,7 @@ export function Sidebar() {
             files={staged()}
             title="STAGED"
             selectedIndex={selectedIndex()}
-            indexOffset={unstaged().length}
+            indexOffset={conflicts().length + unstaged().length}
             onSelect={(file, idx) => {
               setSelectedIndex(idx)
               setSelectedFile(file.path)

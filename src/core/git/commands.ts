@@ -2,8 +2,9 @@
 // Typed async wrappers around git CLI commands
 
 import { exec } from "../../lib/shell.ts"
-import { parseBranches, parseCommitFiles, parseCommitStats, parseDiff, parseLog, parseStash, parseStatus } from "./parser.ts"
-import type { CommitStats, FileDiff, GitBranch, GitCommit, GitFile, GitStash, GitStatus } from "./types.ts"
+import { parseBranches, parseCommitFiles, parseCommitStats, parseDiff, parseLog, parseMergeState, parseStash, parseStatus } from "./parser.ts"
+import type { CommitStats, FileDiff, GitBranch, GitCommit, GitFile, GitStash, GitStatus, MergeState } from "./types.ts"
+import { FILE_STATUS, MERGE_STATE } from "./types.ts"
 
 // ── Error ─────────────────────────────────────────────────────
 
@@ -284,4 +285,92 @@ export async function stageHunk(patchContent: string, cwd?: string): Promise<voi
     const stderr = await new Response(proc.stderr).text()
     throw new GitCommandError("apply --cached", stderr)
   }
+}
+
+// ── Conflict Resolution ───────────────────────────────────────
+
+export async function getMergeState(cwd?: string): Promise<MergeState> {
+  const gitDir = (await run(["rev-parse", "--git-dir"], cwd)).trim()
+  const { stat } = await import("node:fs/promises")
+  const { join } = await import("node:path")
+
+  const exists = async (p: string) => {
+    try { await stat(join(gitDir, p)); return true } catch { return false }
+  }
+
+  const readFile = async (p: string): Promise<string | null> => {
+    try {
+      const file = Bun.file(join(gitDir, p))
+      return await file.text()
+    } catch { return null }
+  }
+
+  const [mergeHead, rebaseDir, cherryPickHead, revertHead, mergeMsg] = await Promise.all([
+    exists("MERGE_HEAD"),
+    exists("rebase-merge").then(v => v || exists("rebase-apply")).then(Boolean),
+    exists("CHERRY_PICK_HEAD"),
+    exists("REVERT_HEAD"),
+    readFile("MERGE_MSG"),
+  ])
+
+  const type = parseMergeState(mergeHead, rebaseDir, cherryPickHead, revertHead, mergeMsg)
+
+  // Count conflicted files from status
+  let conflictCount = 0
+  let source: string | undefined
+  if (type !== MERGE_STATE.NONE) {
+    const status = await getStatus(cwd)
+    conflictCount = status.unstaged.filter(f => f.status === FILE_STATUS.UNMERGED).length
+
+    // Try to extract source branch from MERGE_MSG
+    if (mergeMsg) {
+      const match = mergeMsg.match(/^Merge branch '([^']+)'/)
+      if (match) source = match[1]
+    }
+  }
+
+  return { type, source, conflictCount }
+}
+
+export async function checkoutOurs(path: string, cwd?: string): Promise<void> {
+  await run(["checkout", "--ours", "--", path], cwd)
+}
+
+export async function checkoutTheirs(path: string, cwd?: string): Promise<void> {
+  await run(["checkout", "--theirs", "--", path], cwd)
+}
+
+export async function markResolved(path: string, cwd?: string): Promise<void> {
+  await run(["add", "--", path], cwd)
+}
+
+export async function mergeAbort(cwd?: string): Promise<void> {
+  await run(["merge", "--abort"], cwd)
+}
+
+export async function mergeContinue(cwd?: string): Promise<void> {
+  await run(["merge", "--continue", "--no-edit"], cwd)
+}
+
+export async function rebaseAbort(cwd?: string): Promise<void> {
+  await run(["rebase", "--abort"], cwd)
+}
+
+export async function rebaseContinue(cwd?: string): Promise<void> {
+  await run(["rebase", "--continue"], cwd)
+}
+
+export async function getConflictDiff(path: string, cwd?: string): Promise<FileDiff[]> {
+  // During a merge conflict, git diff shows the combined diff with conflict markers
+  const result = await exec(["git", "diff", "--", path], { cwd })
+  // git diff may return exit code 1 during conflicts
+  if (result.exitCode > 1) {
+    throw new GitCommandError("diff (conflict)", result.stderr)
+  }
+  return parseDiff(result.stdout)
+}
+
+export async function getFileVersion(path: string, stage: 1 | 2 | 3, cwd?: string): Promise<string> {
+  // Stage 1 = common ancestor, 2 = ours (HEAD), 3 = theirs (incoming)
+  return run(["show", `:${stage}:${path}`], cwd)
 }

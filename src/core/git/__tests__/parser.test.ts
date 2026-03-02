@@ -9,7 +9,7 @@ import {
   parseStash,
   parseStatus,
 } from "../parser"
-import { DIFF_LINE_TYPE, FILE_STATUS } from "../types"
+import { DIFF_LINE_TYPE, FILE_STATUS, UNMERGED_STATUS } from "../types"
 
 // ── parseStatus ───────────────────────────────────────────────
 
@@ -702,5 +702,121 @@ describe("parseCommitFiles", () => {
 
     expect(files).toHaveLength(1)
     expect(files[0]!.path).toBe("src/my file.ts")
+  })
+})
+
+// ── parseStatus — unmerged entries ────────────────────────────
+
+describe("parseStatus — unmerged entries", () => {
+  test("parses both-modified (UU) unmerged file", () => {
+    const output = [
+      "# branch.oid abc123",
+      "# branch.head main",
+      "u UU N... 100644 100644 100644 100644 abc123 def456 789abc README.md",
+    ].join("\n")
+
+    const status = parseStatus(output)
+
+    expect(status.unstaged).toHaveLength(1)
+    expect(status.unstaged[0]).toEqual({
+      path: "README.md",
+      status: FILE_STATUS.UNMERGED,
+      staged: false,
+      unmergedStatus: UNMERGED_STATUS.BOTH_MODIFIED,
+    })
+  })
+
+  test("parses both-added (AA) unmerged file", () => {
+    const output = [
+      "# branch.oid abc123",
+      "# branch.head main",
+      "u AA N... 100644 100644 000000 100644 abc123 def456 000000 src/new-file.ts",
+    ].join("\n")
+
+    const status = parseStatus(output)
+
+    expect(status.unstaged).toHaveLength(1)
+    expect(status.unstaged[0]!.unmergedStatus).toBe(UNMERGED_STATUS.BOTH_ADDED)
+  })
+
+  test("parses both-deleted (DD) unmerged file", () => {
+    const output = [
+      "# branch.oid abc123",
+      "# branch.head main",
+      "u DD N... 000000 000000 100644 000000 000000 000000 abc123 src/removed.ts",
+    ].join("\n")
+
+    const status = parseStatus(output)
+
+    expect(status.unstaged).toHaveLength(1)
+    expect(status.unstaged[0]!.unmergedStatus).toBe(UNMERGED_STATUS.BOTH_DELETED)
+  })
+
+  test("parses added-by-us (AU) unmerged file", () => {
+    const output = [
+      "# branch.oid abc123",
+      "# branch.head main",
+      "u AU N... 100644 000000 100644 100644 abc123 000000 def456 src/ours.ts",
+    ].join("\n")
+
+    const status = parseStatus(output)
+
+    expect(status.unstaged[0]!.unmergedStatus).toBe(UNMERGED_STATUS.ADDED_BY_US)
+  })
+
+  test("parses deleted-by-them (UD) unmerged file", () => {
+    const output = [
+      "# branch.oid abc123",
+      "# branch.head main",
+      "u UD N... 100644 100644 000000 100644 abc123 def456 000000 src/theirs-deleted.ts",
+    ].join("\n")
+
+    const status = parseStatus(output)
+
+    expect(status.unstaged[0]!.unmergedStatus).toBe(UNMERGED_STATUS.DELETED_BY_THEM)
+  })
+
+  test("parses multiple unmerged files with different substatuses", () => {
+    const output = [
+      "# branch.oid abc123",
+      "# branch.head main",
+      "u UU N... 100644 100644 100644 100644 abc123 def456 789abc README.md",
+      "u AA N... 100644 100644 000000 100644 abc123 def456 000000 src/both-added.ts",
+      "1 M. N... 100644 100644 100644 abc123 def456 src/normal-staged.ts",
+    ].join("\n")
+
+    const status = parseStatus(output)
+
+    expect(status.unstaged).toHaveLength(2)
+    expect(status.unstaged[0]!.unmergedStatus).toBe(UNMERGED_STATUS.BOTH_MODIFIED)
+    expect(status.unstaged[1]!.unmergedStatus).toBe(UNMERGED_STATUS.BOTH_ADDED)
+    expect(status.staged).toHaveLength(1)
+  })
+
+  test("parses unmerged file with spaces in path", () => {
+    const output = [
+      "# branch.oid abc123",
+      "# branch.head main",
+      "u UU N... 100644 100644 100644 100644 abc123 def456 789abc my docs/readme file.md",
+    ].join("\n")
+
+    const status = parseStatus(output)
+
+    expect(status.unstaged).toHaveLength(1)
+    expect(status.unstaged[0]!.path).toBe("my docs/readme file.md")
+  })
+
+  test("handles unknown unmerged substatus gracefully", () => {
+    const output = [
+      "# branch.oid abc123",
+      "# branch.head main",
+      "u XX N... 100644 100644 100644 100644 abc123 def456 789abc file.ts",
+    ].join("\n")
+
+    const status = parseStatus(output)
+
+    expect(status.unstaged).toHaveLength(1)
+    expect(status.unstaged[0]!.status).toBe(FILE_STATUS.UNMERGED)
+    expect(status.unstaged[0]!.unmergedStatus).toBeUndefined()
   })
 })

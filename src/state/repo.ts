@@ -2,8 +2,8 @@
 // Repository state — Solid.js store wrapping git command outputs
 
 import { createStore } from "solid-js/store"
-import type { FileDiff, GitBranch, GitCommit, GitStash, GitStatus } from "../core/git/types.ts"
-import { getBranches, getDiff, getLog, getStashList, getStatus } from "../core/git/commands.ts"
+import type { FileDiff, GitBranch, GitCommit, GitStash, GitStatus, MergeState } from "../core/git/types.ts"
+import { getBranches, getDiff, getLog, getMergeState, getStashList, getStatus } from "../core/git/commands.ts"
 import { error as logError } from "../lib/logger.ts"
 import { config } from "./config.ts"
 
@@ -15,6 +15,7 @@ interface RepoState {
   commits: GitCommit[]
   branches: GitBranch[]
   stashes: GitStash[]
+  mergeState: MergeState | null
   loading: boolean
   error: string | null
 }
@@ -27,6 +28,7 @@ const [repo, setRepo] = createStore<RepoState>({
   commits: [],
   branches: [],
   stashes: [],
+  mergeState: null,
   loading: false,
   error: null,
 })
@@ -88,6 +90,16 @@ export async function refreshStashes(): Promise<void> {
   }
 }
 
+export async function refreshMergeState(): Promise<void> {
+  try {
+    const state = await getMergeState()
+    setRepo("mergeState", state)
+  } catch (err) {
+    logError("Failed to detect merge state", { error: err instanceof Error ? err.message : String(err) })
+    setRepo("mergeState", null)
+  }
+}
+
 export async function refreshAll(): Promise<void> {
   setRepo("loading", true)
   setRepo("error", null)
@@ -99,6 +111,7 @@ export async function refreshAll(): Promise<void> {
       refreshCommits(),
       refreshBranches(),
       refreshStashes(),
+      refreshMergeState(),
     ])
   } catch (err) {
     setRepo("error", err instanceof Error ? err.message : String(err))

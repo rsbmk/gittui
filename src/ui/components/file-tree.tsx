@@ -3,6 +3,7 @@
 
 import { For, Show } from "solid-js"
 import type { GitFile } from "../../core/git/types.ts"
+import { FILE_STATUS } from "../../core/git/types.ts"
 
 // ── Status colors ────────────────────────────────────────────
 
@@ -18,6 +19,16 @@ const STATUS_COLORS: Record<string, string> = {
 
 function statusColor(status: string): string {
   return STATUS_COLORS[status] ?? "#cdd6f4"
+}
+
+// ── Status display ───────────────────────────────────────────
+
+function displayStatus(file: GitFile): string {
+  // Show detailed substatus for unmerged files (UU, AA, DD, etc.)
+  if (file.status === FILE_STATUS.UNMERGED && file.unmergedStatus) {
+    return file.unmergedStatus
+  }
+  return file.status
 }
 
 // ── Props ────────────────────────────────────────────────────
@@ -49,7 +60,7 @@ export function FileTree(props: FileTreeProps) {
               fg={statusColor(file.status)}
               wrapMode="none"
             >
-              {isSelected() ? "▸" : " "} {file.status} {file.path}
+              {isSelected() ? "▸" : " "} {displayStatus(file)} {file.path}
             </text>
           )
         }}
