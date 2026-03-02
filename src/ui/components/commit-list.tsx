@@ -13,13 +13,6 @@ export interface CommitListProps {
   compact?: boolean
 }
 
-// ── Helpers ──────────────────────────────────────────────────
-
-function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text
-  return text.slice(0, maxLen - 1) + "…"
-}
-
 // ── Component ────────────────────────────────────────────────
 
 export function CommitList(props: CommitListProps) {
@@ -46,7 +39,7 @@ export function CommitList(props: CommitListProps) {
                       {isSelected() ? "▸" : " "}
                     </text>
                     <text wrapMode="none" fg="#f9e2af">{commit.shortHash}</text>
-                    <text wrapMode="none" fg="#cdd6f4"> {truncate(commit.message, 18)}</text>
+                    <text wrapMode="none" fg="#cdd6f4"> {commit.message}</text>
                   </box>
                 }
               >
