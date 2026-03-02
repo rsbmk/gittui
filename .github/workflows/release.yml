@@ -31,15 +31,15 @@ jobs:
       - run: bun install
 
       - name: Build binary
-        run: bun build --compile --target=bun-${{ matrix.target }} --outfile=guit src/index.ts
+        run: bun build --compile --target=bun-${{ matrix.target }} --outfile=gittui src/index.ts
 
       - name: Create tarball
-        run: tar czf guit-${{ matrix.target }}.tar.gz guit
+        run: tar czf gittui-${{ matrix.target }}.tar.gz gittui
 
       - uses: actions/upload-artifact@v4
         with:
-          name: guit-${{ matrix.target }}
-          path: guit-${{ matrix.target }}.tar.gz
+          name: gittui-${{ matrix.target }}
+          path: gittui-${{ matrix.target }}.tar.gz
 
   release:
     needs: build

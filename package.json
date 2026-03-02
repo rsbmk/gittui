@@ -1,10 +1,10 @@
 {
-  "name": "guit",
+  "name": "gittui",
   "version": "0.1.0",
   "description": "Modern terminal git client",
   "type": "module",
   "bin": {
-    "guit": "./src/index.ts"
+    "gittui": "./src/index.ts"
   },
   "files": [
     "src/",
@@ -12,18 +12,18 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/rsbmk/guit.git"
+    "url": "https://github.com/rsbmk/gittui.git"
   },
-  "homepage": "https://github.com/rsbmk/guit",
+  "homepage": "https://github.com/rsbmk/gittui",
   "bugs": {
-    "url": "https://github.com/rsbmk/guit/issues"
+    "url": "https://github.com/rsbmk/gittui/issues"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "dev": "bun --preload @opentui/solid/preload --hot src/index.ts",
-    "build": "bun --preload @opentui/solid/preload build --compile --outfile=guit src/index.ts",
+    "build": "bun --preload @opentui/solid/preload build --compile --outfile=gittui src/index.ts",
     "build:all": "bun run scripts/build.ts",
     "build:current": "bun run scripts/build.ts --current",
     "test": "bun test",

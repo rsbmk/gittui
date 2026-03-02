@@ -1,17 +1,17 @@
 # Syntax Themes
 
-guit includes syntax highlighting for diffs powered by [tree-sitter](https://tree-sitter.github.io/tree-sitter/).
+gittui includes syntax highlighting for diffs powered by [tree-sitter](https://tree-sitter.github.io/tree-sitter/).
 You can choose from 5 built-in themes, customize individual token colors, or disable highlighting entirely.
 
 ## Quick Start
 
 ### From the UI
 
-Open guit, go to the **Settings** tab (`5`), navigate to **Diff > Syntax Theme**, and cycle through the available themes with `Enter` or `l`.
+Open gittui, go to the **Settings** tab (`5`), navigate to **Diff > Syntax Theme**, and cycle through the available themes with `Enter` or `l`.
 
 ### From the Config File
 
-Edit `~/.config/guit/config.toml`:
+Edit `~/.config/gittui/config.toml`:
 
 ```toml
 [diff]
@@ -34,7 +34,7 @@ syntax_theme = "catppuccin-mocha"
 You can override individual token colors without creating a full theme.
 Overrides apply **on top** of the selected theme — only the tokens you specify are replaced.
 
-Edit `~/.config/guit/config.toml`:
+Edit `~/.config/gittui/config.toml`:
 
 ```toml
 [diff]
@@ -121,7 +121,7 @@ To create a fully custom theme, use any built-in theme as a base and override al
     default              = "#abb2bf"
     ```
 
-3. **Restart guit** or switch away and back to the diff view. Changes take effect when the config is reloaded.
+3. **Restart gittui** or switch away and back to the diff view. Changes take effect when the config is reloaded.
 
 ### Full Example — "Solarized Dark" Custom Theme
 
