@@ -139,7 +139,7 @@ export function PullRequestsView() {
             <text fg="#cdd6f4"> Review body (optional):</text>
             <input
               value=""
-              onContentChange={((val: unknown) => setBody(String(val))) as any}
+              onInput={(value) => setBody(value)}
               width={58}
               focused={true}
             />

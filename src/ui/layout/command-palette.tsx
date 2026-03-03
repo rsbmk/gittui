@@ -42,12 +42,17 @@ const MAX_VISIBLE = 14
 export function CommandPalette(props: CommandPaletteProps) {
   const [filter, setFilter] = createSignal("")
   const [selectedIdx, setSelectedIdx] = createSignal(0)
+  const [inputFocused, setInputFocused] = createSignal(false)
 
-  // Reset state when palette opens
+  // Reset state when palette opens — delay focus to prevent triggering keystroke leak
   createEffect(() => {
     if (props.visible) {
       setFilter("")
       setSelectedIdx(0)
+      setInputFocused(false)
+      setTimeout(() => setInputFocused(true), 0)
+    } else {
+      setInputFocused(false)
     }
   })
 
@@ -92,6 +97,19 @@ export function CommandPalette(props: CommandPaletteProps) {
   useKeyboard((key) => {
     if (!props.visible) return
 
+    // Handle ctrl+key combos (OpenTUI reports ctrl as modifier, not in key.name)
+    if (key.ctrl) {
+      switch (key.name) {
+        case "p":
+          setSelectedIdx((prev) => Math.max(0, prev - 1))
+          break
+        case "n":
+          setSelectedIdx((prev) => Math.min(filteredActions().length - 1, prev + 1))
+          break
+      }
+      return
+    }
+
     switch (key.name) {
       case "escape":
         props.onClose()
@@ -101,11 +119,9 @@ export function CommandPalette(props: CommandPaletteProps) {
         executeSelected()
         break
       case "up":
-      case "ctrl+p":
         setSelectedIdx((prev) => Math.max(0, prev - 1))
         break
       case "down":
-      case "ctrl+n":
         setSelectedIdx((prev) => Math.min(filteredActions().length - 1, prev + 1))
         break
     }
@@ -133,12 +149,12 @@ export function CommandPalette(props: CommandPaletteProps) {
           <text fg={color("accent")}>{"> "}</text>
           <input
             value={filter()}
-            onContentChange={((text: unknown) => {
-              setFilter(String(text))
+            onInput={(value) => {
+              setFilter(value)
               setSelectedIdx(0)
-            }) as any}
+            }}
             width={54}
-            focused={true}
+            focused={inputFocused()}
           />
         </box>
 
@@ -185,13 +201,17 @@ export function CommandPalette(props: CommandPaletteProps) {
         </box>
 
         {/* Footer */}
-        <text fg={color("muted")}>
-          {" "}
-          {"↑↓ navigate  enter select  esc close"}
-          {filteredActions().length > MAX_VISIBLE
-            ? `  (${filteredActions().length} actions)`
-            : ""}
-        </text>
+        <box flexDirection="row">
+          <text fg={color("accent")}>[↑↓]</text>
+          <text fg={color("muted")}> navigate </text>
+          <text fg={color("accent")}>[ret]</text>
+          <text fg={color("muted")}> select </text>
+          <text fg={color("accent")}>[esc]</text>
+          <text fg={color("muted")}> close </text>
+          <Show when={filteredActions().length > MAX_VISIBLE}>
+            <text fg={color("muted")}>({filteredActions().length} actions)</text>
+          </Show>
+        </box>
       </box>
     </Show>
   )

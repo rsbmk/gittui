@@ -39,6 +39,7 @@ function SectionDivider(props: { label: string }) {
 // ── Component ────────────────────────────────────────────────
 
 export function PromptDialog(props: PromptDialogProps) {
+  let inputRef: any
   const [input, setInput] = createSignal(props.initialValue ?? "")
 
   useDialogKeyboard((key) => {
@@ -60,8 +61,11 @@ export function PromptDialog(props: PromptDialogProps) {
       <box flexDirection="column">
         <SectionDivider label={props.label} />
         <input
+          ref={inputRef}
           value={props.initialValue ?? ""}
-          onContentChange={((val: unknown) => setInput(String(val))) as any}
+          onContentChange={() => {
+            if (inputRef) setInput(inputRef.plainText ?? "")
+          }}
           width={DIALOG_CONTENT_WIDTH - 2}
           focused={true}
         />
