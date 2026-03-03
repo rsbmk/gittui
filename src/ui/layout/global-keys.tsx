@@ -98,15 +98,14 @@ import {
   viewingStash,
 } from "../views/stash.tsx"
 import {
-  handleSelectPR,
-  handleClosePRDetail,
   handleViewFile as handlePRViewFile,
+  handleCloseFileDiff as handlePRCloseFileDiff,
   handleOpenInBrowser,
   handleCycleFilter as handlePRCycleFilter,
   prSelectedIndex as prSelIdx,
   setPRSelectedIndex,
   prListLength,
-  viewingPRDetail,
+  viewingFileDiff as prViewingFileDiff,
 } from "../views/pull-requests.tsx"
 import {
   prs,
@@ -151,8 +150,8 @@ function currentListLength(): number {
     case TAB_ID.STASH:
       return stashListLength()
     case TAB_ID.PRS:
-      // When viewing detail, navigate files; otherwise navigate PR list
-      if (viewingPRDetail()) return prs.files.length
+      // Main panel: navigate files. Sidebar: navigate PR list.
+      if (activePanel() === PANEL.MAIN) return prs.files.length
       return prListLength()
     case TAB_ID.SETTINGS:
       return 0
@@ -175,7 +174,7 @@ function getSelectedIndex(): number {
     case TAB_ID.STASH:
       return stashSelectedIndex()
     case TAB_ID.PRS:
-      if (viewingPRDetail()) return prFileSelectedIndex()
+      if (activePanel() === PANEL.MAIN) return prFileSelectedIndex()
       return prSelIdx()
     case TAB_ID.SETTINGS:
       return 0
@@ -203,7 +202,7 @@ function setCurrentSelectedIndex(idx: number | ((prev: number) => number)): void
       setStashSelectedIndex(typeof idx === "function" ? idx(stashSelectedIndex()) : idx)
       break
     case TAB_ID.PRS:
-      if (viewingPRDetail()) {
+      if (activePanel() === PANEL.MAIN) {
         setPRFileSelectedIndex(typeof idx === "function" ? idx(prFileSelectedIndex()) : idx)
       } else {
         setPRSelectedIndex(typeof idx === "function" ? idx(prSelIdx()) : idx)
@@ -295,7 +294,6 @@ const ACTION_HANDLERS: Record<string, () => void | Promise<void>> = {
   dropStash: handleStashDrop,
 
   // PRs
-  viewPR: handleSelectPR,
   viewPRFile: handlePRViewFile,
   openInBrowser: handleOpenInBrowser,
   filterPRs: handlePRCycleFilter,
@@ -572,8 +570,8 @@ export function GlobalKeyHandler() {
         closeStashView()
         return
       }
-      if (activeTab() === TAB_ID.PRS && viewingPRDetail()) {
-        handleClosePRDetail()
+      if (activeTab() === TAB_ID.PRS && prViewingFileDiff()) {
+        handlePRCloseFileDiff()
         return
       }
     }

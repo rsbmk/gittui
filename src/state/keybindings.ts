@@ -86,12 +86,11 @@ const STASH_BINDINGS: Keybinding[] = [
 ]
 
 const PRS_BINDINGS: Keybinding[] = [
-  { key: "enter", action: "viewPR", context: "prs", description: "View PR detail" },
+  { key: "enter", action: "viewPRFile", context: "prs", description: "View file diff" },
   { key: "r", action: "submitReview", context: "prs", description: "Submit review" },
   { key: "m", action: "mergePR", context: "prs", description: "Merge PR" },
   { key: "o", action: "openInBrowser", context: "prs", description: "Open in browser" },
   { key: "f", action: "filterPRs", context: "prs", description: "Filter open/closed/all" },
-  { key: "v", action: "viewPRFile", context: "prs", description: "View file diff" },
 ]
 
 const SETTINGS_BINDINGS: Keybinding[] = [

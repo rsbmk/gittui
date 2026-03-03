@@ -16,7 +16,7 @@ import {
 import { FileTree } from "../components/file-tree.tsx"
 import { BranchList } from "../components/branch-list.tsx"
 import { CommitList } from "../components/commit-list.tsx"
-import { PRCard } from "../components/pr-card.tsx"
+import { PRSidebarItem } from "../components/pr-sidebar-item.tsx"
 import { ScrollList } from "../components/scroll-list.tsx"
 import {
   branchSelectedIndex,
@@ -201,7 +201,7 @@ export function Sidebar() {
           <text fg="#6c7086"> Stash entries shown in main panel</text>
         </Show>
 
-        {/* PRs tab — PR list in sidebar */}
+        {/* PRs tab — compact PR list */}
         <Show when={activeTab() === TAB_ID.PRS}>
           <Show
             when={prs.ghAvailable && prs.list.length > 0}
@@ -213,7 +213,7 @@ export function Sidebar() {
           >
             <For each={prs.list}>
               {(pr, i) => (
-                <PRCard pr={pr} selected={prSelectedIndex() === i()} />
+                <PRSidebarItem pr={pr} selected={prSelectedIndex() === i()} />
               )}
             </For>
           </Show>

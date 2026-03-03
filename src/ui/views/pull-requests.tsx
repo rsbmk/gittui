@@ -1,9 +1,9 @@
 // src/ui/views/pull-requests.tsx
-// Pull Requests tab — list, detail, review, merge via gh CLI
+// Pull Requests tab — always shows detail for focused PR, with file diff sub-view
 
-import { createSignal, For, Show, onMount, onCleanup, type Accessor } from "solid-js"
+import { createSignal, For, Show, onMount, onCleanup } from "solid-js"
+import type { Accessor } from "solid-js"
 import { useDialog, useDialogKeyboard } from "@opentui-ui/dialog/solid"
-import { PRCard } from "../components/pr-card.tsx"
 import { ScrollList } from "../components/scroll-list.tsx"
 import { DiffView } from "./diff.tsx"
 import {
@@ -13,11 +13,13 @@ import {
   prFileSelectedIndex,
   setPRFileSelectedIndex,
   prListLength,
-  viewingPRDetail,
+  viewingFileDiff,
+  setViewingFileDiff,
+  focusedPR,
   checkGhAvailable,
   refreshPRs,
-  selectPR,
-  closePRDetail,
+  initPRAutoLoad,
+  closeFileDiff,
   submitReview,
   merge,
   openInBrowser,
@@ -26,34 +28,175 @@ import {
 import { registerAction, unregisterAction } from "../../state/actions.ts"
 import { withDialog } from "../../state/ui.ts"
 import { parseDiff } from "../../core/git/parser.ts"
-import { REVIEW_EVENT, MERGE_METHOD, type ReviewEvent } from "../../core/github/types.ts"
+import {
+  REVIEW_DECISION,
+  REVIEW_EVENT,
+  REVIEW_STATE,
+  MERGE_METHOD,
+  MERGEABLE_STATUS,
+  PR_FILE_STATUS,
+} from "../../core/github/types.ts"
+import type {
+  PullRequest,
+  PRFile,
+  ReviewEvent,
+  MergeableStatus,
+  ReviewState,
+  PRFileStatus,
+} from "../../core/github/types.ts"
 import type { FileDiff } from "../../core/git/types.ts"
+
+// ── Constants ────────────────────────────────────────────────
+
+const COLOR_BLUE = "#89b4fa"
+const COLOR_GREEN = "#a6e3a1"
+const COLOR_RED = "#f38ba8"
+const COLOR_YELLOW = "#f9e2af"
+const COLOR_GRAY = "#6c7086"
+const COLOR_LIGHT = "#cdd6f4"
+const COLOR_SEPARATOR = "#45475a"
+const COLOR_SELECTED_BG = "#313244"
+
+const MAX_BODY_LINES = 10
+const MS_PER_MINUTE = 60_000
+const MINUTES_PER_HOUR = 60
+const HOURS_PER_DAY = 24
 
 // ── PR view state ────────────────────────────────────────────
 
 const [prFileDiff, setPRFileDiff] = createSignal<FileDiff | null>(null)
 
+// ── Status Badge Helpers ─────────────────────────────────────
+
+interface Badge {
+  icon: string
+  text: string
+  color: string
+}
+
+interface MergeableBadge {
+  text: string
+  color: string
+}
+
+function statusBadge(pr: PullRequest): Badge {
+  if (pr.draft) return { icon: "●", text: "Draft", color: COLOR_GRAY }
+
+  switch (pr.reviewDecision) {
+    case REVIEW_DECISION.APPROVED:
+      return { icon: "✓", text: "Approved", color: COLOR_GREEN }
+    case REVIEW_DECISION.CHANGES_REQUESTED:
+      return { icon: "✗", text: "Changes Requested", color: COLOR_RED }
+    case REVIEW_DECISION.REVIEW_REQUIRED:
+      return { icon: "○", text: "Review Required", color: COLOR_YELLOW }
+    default:
+      return { icon: "○", text: "Pending", color: COLOR_GRAY }
+  }
+}
+
+function mergeableBadge(status: MergeableStatus): MergeableBadge {
+  switch (status) {
+    case MERGEABLE_STATUS.MERGEABLE:
+      return { text: "✓ Mergeable", color: COLOR_GREEN }
+    case MERGEABLE_STATUS.CONFLICTING:
+      return { text: "✗ Conflicts", color: COLOR_RED }
+    default:
+      return { text: "? Unknown", color: COLOR_GRAY }
+  }
+}
+
+function reviewIcon(state: ReviewState): string {
+  switch (state) {
+    case REVIEW_STATE.APPROVED:
+      return "✓"
+    case REVIEW_STATE.CHANGES_REQUESTED:
+      return "✗"
+    case REVIEW_STATE.COMMENTED:
+      return "💬"
+    case REVIEW_STATE.PENDING:
+      return "○"
+    default:
+      return "?"
+  }
+}
+
+function reviewColor(state: ReviewState): string {
+  switch (state) {
+    case REVIEW_STATE.APPROVED:
+      return COLOR_GREEN
+    case REVIEW_STATE.CHANGES_REQUESTED:
+      return COLOR_RED
+    case REVIEW_STATE.COMMENTED:
+      return COLOR_BLUE
+    default:
+      return COLOR_GRAY
+  }
+}
+
+function fileStatusColor(status: PRFileStatus): string {
+  switch (status) {
+    case PR_FILE_STATUS.ADDED:
+      return COLOR_GREEN
+    case PR_FILE_STATUS.REMOVED:
+      return COLOR_RED
+    case PR_FILE_STATUS.MODIFIED:
+      return COLOR_YELLOW
+    case PR_FILE_STATUS.RENAMED:
+      return COLOR_BLUE
+    default:
+      return COLOR_LIGHT
+  }
+}
+
+function fileStatusIcon(status: PRFileStatus): string {
+  switch (status) {
+    case PR_FILE_STATUS.ADDED:
+      return "A"
+    case PR_FILE_STATUS.REMOVED:
+      return "D"
+    case PR_FILE_STATUS.MODIFIED:
+      return "M"
+    case PR_FILE_STATUS.RENAMED:
+      return "R"
+    default:
+      return "?"
+  }
+}
+
+function timeAgo(dateStr: string): string {
+  if (!dateStr) return ""
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diff = now - then
+  const mins = Math.floor(diff / MS_PER_MINUTE)
+  if (mins < MINUTES_PER_HOUR) return `${mins}m ago`
+  const hrs = Math.floor(mins / MINUTES_PER_HOUR)
+  if (hrs < HOURS_PER_DAY) return `${hrs}h ago`
+  const days = Math.floor(hrs / HOURS_PER_DAY)
+  return `${days}d ago`
+}
+
+function truncateBody(body: string, maxLines: number): string {
+  const lines = body.split("\n")
+  if (lines.length <= maxLines) return body
+  return lines.slice(0, maxLines).join("\n") + "\n..."
+}
+
 // ── Actions (exported for global-keys) ───────────────────────
-
-export async function handleSelectPR(): Promise<void> {
-  const pr = prs.list[prSelectedIndex()]
-  if (!pr) return
-  await selectPR(pr.number)
-}
-
-export function handleClosePRDetail(): void {
-  closePRDetail()
-  setPRFileDiff(null)
-}
 
 export function handleViewFile(): void {
   const file = prs.files[prFileSelectedIndex()]
   if (!file) return
 
-  // Parse the full PR diff and find the matching file
   const allDiffs = parseDiff(prs.diff)
   const fileDiff = allDiffs.find((d) => d.path === file.path) ?? null
   setPRFileDiff(fileDiff)
+  if (fileDiff) setViewingFileDiff(true)
+}
+
+export function handleCloseFileDiff(): void {
+  closeFileDiff()
+  setPRFileDiff(null)
 }
 
 export async function handleOpenInBrowser(): Promise<void> {
@@ -64,8 +207,8 @@ export function handleCycleFilter(): void {
   cycleFilter()
 }
 
-// Navigation exports
-export { prSelectedIndex, setPRSelectedIndex, prListLength, viewingPRDetail }
+// Navigation re-exports
+export { prSelectedIndex, setPRSelectedIndex, prListLength, viewingFileDiff, focusedPR }
 
 // ── Component ────────────────────────────────────────────────
 
@@ -78,7 +221,8 @@ export function PullRequestsView() {
       await refreshPRs()
     }
 
-    // Register dialog-based actions
+    initPRAutoLoad()
+
     registerAction("submitReview", promptReview)
     registerAction("mergePR", promptMerge)
   })
@@ -96,9 +240,9 @@ export function PullRequestsView() {
     const result = await withDialog(() => dialog.prompt<{ event: ReviewEvent; body: string }>({
       content: (ctx) => {
         const events: Array<{ value: ReviewEvent; label: string; color: string }> = [
-          { value: REVIEW_EVENT.APPROVE, label: "Approve", color: "#a6e3a1" },
-          { value: REVIEW_EVENT.REQUEST_CHANGES, label: "Request Changes", color: "#f38ba8" },
-          { value: REVIEW_EVENT.COMMENT, label: "Comment", color: "#89b4fa" },
+          { value: REVIEW_EVENT.APPROVE, label: "Approve", color: COLOR_GREEN },
+          { value: REVIEW_EVENT.REQUEST_CHANGES, label: "Request Changes", color: COLOR_RED },
+          { value: REVIEW_EVENT.COMMENT, label: "Comment", color: COLOR_BLUE },
         ]
 
         const [selectedEvent, setSelectedEvent] = createSignal(0)
@@ -120,7 +264,7 @@ export function PullRequestsView() {
 
         return () => (
           <box flexDirection="column" width={60} gap={1}>
-            <text fg="#89b4fa">
+            <text fg={COLOR_BLUE}>
               <b> Submit Review — #{prs.selected!.number} </b>
             </text>
 
@@ -128,7 +272,7 @@ export function PullRequestsView() {
             <box flexDirection="row" gap={1}>
               <For each={events}>
                 {(evt, i) => (
-                  <text fg={selectedEvent() === i() ? evt.color : "#6c7086"}>
+                  <text fg={selectedEvent() === i() ? evt.color : COLOR_GRAY}>
                     {selectedEvent() === i() ? `[${evt.label}]` : ` ${evt.label} `}
                   </text>
                 )}
@@ -136,7 +280,7 @@ export function PullRequestsView() {
             </box>
 
             {/* Body input */}
-            <text fg="#cdd6f4"> Review body (optional):</text>
+            <text fg={COLOR_LIGHT}> Review body (optional):</text>
             <input
               value=""
               onInput={(value) => setBody(value)}
@@ -145,9 +289,9 @@ export function PullRequestsView() {
             />
 
             <box flexDirection="row" gap={2}>
-              <text fg="#6c7086"> ←/→: type </text>
-              <text fg="#6c7086"> Enter: submit </text>
-              <text fg="#6c7086"> Esc: cancel </text>
+              <text fg={COLOR_GRAY}> ←/→: type </text>
+              <text fg={COLOR_GRAY}> Enter: submit </text>
+              <text fg={COLOR_GRAY}> Esc: cancel </text>
             </box>
           </box>
         )
@@ -189,28 +333,28 @@ export function PullRequestsView() {
 
         return () => (
           <box flexDirection="column" width={50} gap={1}>
-            <text fg="#89b4fa">
+            <text fg={COLOR_BLUE}>
               <b> Merge PR #{prs.selected!.number} </b>
             </text>
 
             <For each={methods}>
               {(m, i) => (
                 <box flexDirection="row">
-                  <text fg={selected() === i() ? "#89b4fa" : "#6c7086"}>
+                  <text fg={selected() === i() ? COLOR_BLUE : COLOR_GRAY}>
                     {selected() === i() ? " ▸ " : "   "}
                   </text>
-                  <text fg={selected() === i() ? "#cdd6f4" : "#6c7086"}>
+                  <text fg={selected() === i() ? COLOR_LIGHT : COLOR_GRAY}>
                     {m.label}
                   </text>
-                  <text fg="#6c7086"> — {m.desc}</text>
+                  <text fg={COLOR_GRAY}> — {m.desc}</text>
                 </box>
               )}
             </For>
 
             <box flexDirection="row" gap={2}>
-              <text fg="#6c7086"> j/k: select </text>
-              <text fg="#6c7086"> Enter: merge </text>
-              <text fg="#6c7086"> Esc: cancel </text>
+              <text fg={COLOR_GRAY}> j/k: select </text>
+              <text fg={COLOR_GRAY}> Enter: merge </text>
+              <text fg={COLOR_GRAY}> Esc: cancel </text>
             </box>
           </box>
         )
@@ -229,55 +373,40 @@ export function PullRequestsView() {
       {/* gh not available */}
       <Show when={!prs.ghAvailable}>
         <box flexDirection="column" padding={2}>
-          <text fg="#f38ba8">
+          <text fg={COLOR_RED}>
             <b> GitHub CLI not found </b>
           </text>
-          <text fg="#cdd6f4"> Install gh CLI: https://cli.github.com</text>
-          <text fg="#6c7086"> Then run: gh auth login</text>
+          <text fg={COLOR_LIGHT}> Install gh CLI: https://cli.github.com</text>
+          <text fg={COLOR_GRAY}> Then run: gh auth login</text>
         </box>
       </Show>
 
-      {/* Loading */}
-      <Show when={prs.ghAvailable && prs.loading}>
-        <text fg="#6c7086"> Loading PRs...</text>
+      {/* Loading list */}
+      <Show when={prs.ghAvailable && prs.loading && prs.list.length === 0}>
+        <text fg={COLOR_GRAY}> Loading PRs...</text>
       </Show>
 
       {/* Error */}
       <Show when={prs.error}>
         {(error: Accessor<string>) => (
-          <text fg="#f38ba8"> Error: {error()}</text>
+          <text fg={COLOR_RED}> Error: {error()}</text>
         )}
       </Show>
 
-      {/* PR Detail View */}
-      <Show when={prs.ghAvailable && viewingPRDetail() && prs.selected}>
+      {/* Empty list */}
+      <Show when={prs.ghAvailable && !prs.loading && prs.list.length === 0 && !prs.error}>
+        <text fg={COLOR_GRAY}> No pull requests found</text>
+      </Show>
+
+      {/* PR Detail (always shown when a PR is selected) */}
+      <Show when={prs.ghAvailable && prs.selected}>
         {(pr: Accessor<PullRequest>) => (
           <box flexDirection="column" flexGrow={1}>
-            {/* PR header */}
-            <box flexDirection="column" paddingLeft={1}>
-              <box flexDirection="row">
-                <text fg="#89b4fa">
-                  <b>#{pr().number}</b>
-                </text>
-                <text fg="#cdd6f4">
-                  {" "}{pr().title}
-                </text>
-              </box>
-              <box flexDirection="row" gap={1}>
-                <text fg="#6c7086">{pr().author}</text>
-                <text fg="#6c7086">·</text>
-                <text fg="#6c7086">{pr().branch} → {pr().baseBranch}</text>
-                <text fg="#6c7086">·</text>
-                <text fg="#a6e3a1">+{pr().additions}</text>
-                <text fg="#f38ba8">-{pr().deletions}</text>
-              </box>
-            </box>
-
-            {/* File diff view */}
-            <Show when={prFileDiff()}>
+            {/* File diff sub-view */}
+            <Show when={viewingFileDiff() && prFileDiff()}>
               {(diff: Accessor<FileDiff>) => (
                 <box flexDirection="column" flexGrow={1}>
-                  <text fg="#89b4fa">
+                  <text fg={COLOR_BLUE}>
                     <b> {diff().path} </b>
                   </text>
                   <DiffView fileDiff={diff()} />
@@ -285,137 +414,103 @@ export function PullRequestsView() {
               )}
             </Show>
 
-            {/* Files list (when no file diff selected) */}
-            <Show when={!prFileDiff()}>
+            {/* PR detail view */}
+            <Show when={!viewingFileDiff()}>
               <ScrollList selectedRow={prFileSelectedIndex()} flexGrow={1}>
                 <box flexDirection="column" paddingLeft={1}>
-                  {/* Description */}
+                  {/* ── Header ────────────────────────────── */}
+                  <box flexDirection="row">
+                    <text fg={COLOR_BLUE}>
+                      <b>#{pr().number}</b>
+                    </text>
+                    <text fg={COLOR_LIGHT}>
+                      {"  "}{pr().title}
+                    </text>
+                  </box>
+
+                  {/* ── Metadata ──────────────────────────── */}
+                  <box flexDirection="row" gap={1}>
+                    <text fg={statusBadge(pr()).color}>
+                      {statusBadge(pr()).icon} {statusBadge(pr()).text}
+                    </text>
+                    <text fg={COLOR_GRAY}>·</text>
+                    <text fg={COLOR_GRAY}>{pr().author}</text>
+                    <text fg={COLOR_GRAY}>·</text>
+                    <text fg={COLOR_GRAY}>{timeAgo(pr().updatedAt)}</text>
+                  </box>
+                  <box flexDirection="row" gap={1}>
+                    <text fg={COLOR_LIGHT}>{pr().branch} → {pr().baseBranch}</text>
+                    <text fg={COLOR_GRAY}>·</text>
+                    <text fg={mergeableBadge(pr().mergeable).color}>
+                      {mergeableBadge(pr().mergeable).text}
+                    </text>
+                  </box>
+
+                  {/* ── Stats ─────────────────────────────── */}
+                  <text fg={COLOR_SEPARATOR}>── Stats ──────────────────────────────────────</text>
+                  <box flexDirection="row" gap={1}>
+                    <text fg={COLOR_GREEN}>+{pr().additions}</text>
+                    <text fg={COLOR_RED}>-{pr().deletions}</text>
+                    <text fg={COLOR_GRAY}>·</text>
+                    <text fg={COLOR_LIGHT}>{pr().changedFiles} file{pr().changedFiles !== 1 ? "s" : ""} changed</text>
+                  </box>
+
+                  {/* ── Description ────────────────────────── */}
                   <Show when={pr().body}>
-                    <box flexDirection="column">
-                      <text fg="#6c7086">
-                        <b> Description </b>
-                      </text>
-                      <text fg="#cdd6f4"> {truncateBody(pr().body, 5)}</text>
-                    </box>
+                    <text fg={COLOR_SEPARATOR}>── Description ────────────────────────────────</text>
+                    <text fg={COLOR_LIGHT}>{truncateBody(pr().body, MAX_BODY_LINES)}</text>
                   </Show>
 
-                  {/* Reviews */}
-                  <Show when={prs.reviews.length > 0}>
-                    <text fg="#6c7086">
-                      <b> Reviews ({prs.reviews.length}) </b>
-                    </text>
+                  {/* ── Detail Loading ─────────────────────── */}
+                  <Show when={prs.detailLoading}>
+                    <text fg={COLOR_GRAY}> Loading details...</text>
+                  </Show>
+
+                  {/* ── Reviews ────────────────────────────── */}
+                  <Show when={!prs.detailLoading && prs.reviews.length > 0}>
+                    <text fg={COLOR_SEPARATOR}>── Reviews ({prs.reviews.length}) ──────────────────────────────</text>
                     <For each={prs.reviews}>
                       {(review) => (
-                        <box flexDirection="row" paddingLeft={1}>
-                          <text fg={reviewColor(review.state)}>{review.state}</text>
-                          <text fg="#6c7086"> by {review.author}</text>
+                        <box flexDirection="row" paddingLeft={1} gap={1}>
+                          <text fg={reviewColor(review.state)}>
+                            {reviewIcon(review.state)} {review.state}
+                          </text>
+                          <text fg={COLOR_GRAY}>by {review.author}</text>
+                          <text fg={COLOR_GRAY}>·</text>
+                          <text fg={COLOR_GRAY}>{timeAgo(review.submittedAt)}</text>
                         </box>
                       )}
                     </For>
                   </Show>
 
-                  {/* Files */}
-                  <text fg="#6c7086">
-                    <b> Files ({prs.files.length}) </b>
-                  </text>
-                  <For each={prs.files}>
-                    {(file, i) => {
-                      const isSelected = () => prFileSelectedIndex() === i()
-                      return (
-                        <box flexDirection="row" backgroundColor={isSelected() ? "#313244" : undefined}>
-                          <text fg={isSelected() ? "#89b4fa" : "#cdd6f4"}>
-                            {isSelected() ? " ▸ " : "   "}
-                          </text>
-                          <text fg={fileStatusColor(file.status)}>{fileStatusIcon(file.status)}</text>
-                          <text fg="#cdd6f4"> {file.path}</text>
-                          <text fg="#a6e3a1"> +{file.additions}</text>
-                          <text fg="#f38ba8"> -{file.deletions}</text>
-                        </box>
-                      )
-                    }}
-                  </For>
+                  {/* ── Files ──────────────────────────────── */}
+                  <Show when={!prs.detailLoading}>
+                    <text fg={COLOR_SEPARATOR}>── Files ({prs.files.length}) ──────────────────────────────────</text>
+                    <For each={prs.files}>
+                      {(file, i) => {
+                        const isSelected = () => prFileSelectedIndex() === i()
+                        return (
+                          <box flexDirection="row" backgroundColor={isSelected() ? COLOR_SELECTED_BG : undefined}>
+                            <text fg={isSelected() ? COLOR_BLUE : COLOR_LIGHT}>
+                              {isSelected() ? " ▸ " : "   "}
+                            </text>
+                            <text fg={fileStatusColor(file.status)}>
+                              {fileStatusIcon(file.status)}
+                            </text>
+                            <text fg={COLOR_LIGHT}>{"  "}{file.path}</text>
+                            <text fg={COLOR_GREEN}>{" "}+{file.additions}</text>
+                            <text fg={COLOR_RED}> -{file.deletions}</text>
+                          </box>
+                        )
+                      }}
+                    </For>
+                  </Show>
                 </box>
               </ScrollList>
             </Show>
           </box>
         )}
       </Show>
-
-      {/* PR List View */}
-      <Show when={prs.ghAvailable && !viewingPRDetail() && !prs.loading}>
-        <box flexDirection="column" flexGrow={1}>
-          <text fg="#6c7086">
-            <b> PULL REQUESTS ({prs.list.length}) [{prs.filter}] </b>
-          </text>
-
-          <Show
-            when={prs.list.length > 0}
-            fallback={<text fg="#6c7086"> No pull requests found</text>}
-          >
-            <ScrollList selectedRow={prSelectedIndex() * 2} flexGrow={1}>
-              <For each={prs.list}>
-                {(pr, i) => (
-                  <PRCard pr={pr} selected={prSelectedIndex() === i()} />
-                )}
-              </For>
-            </ScrollList>
-          </Show>
-        </box>
-      </Show>
     </box>
   )
-}
-
-// ── Helpers ──────────────────────────────────────────────────
-
-// Import the PullRequest type for Show callback
-import type { PullRequest } from "../../core/github/types.ts"
-
-function reviewColor(state: string): string {
-  switch (state) {
-    case "APPROVED":
-      return "#a6e3a1"
-    case "CHANGES_REQUESTED":
-      return "#f38ba8"
-    case "COMMENTED":
-      return "#89b4fa"
-    default:
-      return "#6c7086"
-  }
-}
-
-function fileStatusColor(status: string): string {
-  switch (status) {
-    case "added":
-      return "#a6e3a1"
-    case "removed":
-      return "#f38ba8"
-    case "modified":
-      return "#f9e2af"
-    case "renamed":
-      return "#89b4fa"
-    default:
-      return "#cdd6f4"
-  }
-}
-
-function fileStatusIcon(status: string): string {
-  switch (status) {
-    case "added":
-      return "A"
-    case "removed":
-      return "D"
-    case "modified":
-      return "M"
-    case "renamed":
-      return "R"
-    default:
-      return "?"
-  }
-}
-
-function truncateBody(body: string, maxLines: number): string {
-  const lines = body.split("\n")
-  if (lines.length <= maxLines) return body
-  return lines.slice(0, maxLines).join("\n") + "\n..."
 }

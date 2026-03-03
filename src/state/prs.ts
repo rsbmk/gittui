@@ -1,7 +1,7 @@
 // src/state/prs.ts
 // PR state — Solid.js store wrapping GitHub CLI operations
 
-import { createSignal, createMemo } from "solid-js"
+import { createSignal, createEffect, createMemo } from "solid-js"
 import { createStore } from "solid-js/store"
 import type {
   PullRequest,
@@ -12,7 +12,6 @@ import type {
 import {
   isGhAvailable,
   listPRs,
-  getPRDetail,
   getPRFiles,
   getPRReviews,
   getPRComments,
@@ -26,6 +25,41 @@ import type { ReviewEvent, MergeMethod, PRState } from "../core/github/types.ts"
 import { createCache } from "../lib/perf.ts"
 import { error as logError } from "../lib/logger.ts"
 
+// ── Constants ────────────────────────────────────────────────
+
+const DETAIL_CACHE_TTL_MS = 3 * 60 * 1000 // 3 minutes
+const LOAD_DEBOUNCE_MS = 300
+
+// ── Per-PR Detail Cache ──────────────────────────────────────
+
+interface PRDetailCacheEntry {
+  files: PRFile[]
+  reviews: PRReview[]
+  comments: PRComment[]
+  diff: string
+  loadedAt: number
+}
+
+const prDetailCache = new Map<number, PRDetailCacheEntry>()
+
+function getCachedDetail(prNumber: number): PRDetailCacheEntry | null {
+  const entry = prDetailCache.get(prNumber)
+  if (!entry) return null
+  if (Date.now() - entry.loadedAt >= DETAIL_CACHE_TTL_MS) {
+    prDetailCache.delete(prNumber)
+    return null
+  }
+  return entry
+}
+
+function setCachedDetail(prNumber: number, detail: Omit<PRDetailCacheEntry, "loadedAt">): void {
+  prDetailCache.set(prNumber, { ...detail, loadedAt: Date.now() })
+}
+
+function invalidateDetailCache(prNumber: number): void {
+  prDetailCache.delete(prNumber)
+}
+
 // ── State Interface ──────────────────────────────────────────
 
 interface PRStoreState {
@@ -36,6 +70,7 @@ interface PRStoreState {
   comments: PRComment[]
   diff: string
   loading: boolean
+  detailLoading: boolean
   error: string | null
   ghAvailable: boolean
   filter: PRState | "all"
@@ -51,6 +86,7 @@ const [prs, setPRs] = createStore<PRStoreState>({
   comments: [],
   diff: "",
   loading: false,
+  detailLoading: false,
   error: null,
   ghAvailable: false,
   filter: "open",
@@ -68,12 +104,118 @@ const prListCache = createCache(async () => {
 
 const [prSelectedIndex, setPRSelectedIndex] = createSignal(0)
 const [prFileSelectedIndex, setPRFileSelectedIndex] = createSignal(0)
-const [viewingPRDetail, setViewingPRDetail] = createSignal(false)
+const [viewingFileDiff, setViewingFileDiff] = createSignal(false)
 
-export { prSelectedIndex, setPRSelectedIndex, prFileSelectedIndex, setPRFileSelectedIndex, viewingPRDetail }
+export { prSelectedIndex, setPRSelectedIndex, prFileSelectedIndex, setPRFileSelectedIndex }
+export { viewingFileDiff, setViewingFileDiff }
+
+/** The PR currently focused in the sidebar list */
+export const focusedPR = createMemo<PullRequest | null>(() => {
+  const idx = prSelectedIndex()
+  const list = prs.list
+  if (list.length === 0) return null
+  return list[idx] ?? null
+})
 
 export function prListLength(): number {
   return prs.list.length
+}
+
+// ── Debounced Auto-Load ──────────────────────────────────────
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Load PR detail (files, reviews, comments, diff) for the given PR number */
+async function loadPRDetail(prNumber: number): Promise<void> {
+  setPRs("detailLoading", true)
+
+  try {
+    const [files, reviews, comments, diff] = await Promise.all([
+      getPRFiles(prNumber),
+      getPRReviews(prNumber),
+      getPRComments(prNumber),
+      getPRDiff(prNumber),
+    ])
+
+    // Only apply if the focused PR hasn't changed while we were loading
+    const currentFocused = focusedPR()
+    if (currentFocused && currentFocused.number === prNumber) {
+      setPRs("files", files)
+      setPRs("reviews", reviews)
+      setPRs("comments", comments)
+      setPRs("diff", diff)
+    }
+
+    // Cache regardless
+    setCachedDetail(prNumber, { files, reviews, comments, diff })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    logError("Failed to auto-load PR detail", { prNumber, error: msg })
+    // Don't set global error for background loads — only clear loading
+  } finally {
+    setPRs("detailLoading", false)
+  }
+}
+
+/**
+ * Effect: when the focused PR changes, set selected immediately from list data
+ * and debounce-load the detail (files, reviews, comments, diff).
+ */
+export function initPRAutoLoad(): void {
+  createEffect(() => {
+    const pr = focusedPR()
+
+    // Clear any pending debounce
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
+
+    if (!pr || !prs.ghAvailable) {
+      setPRs("selected", null)
+      setPRs("files", [])
+      setPRs("reviews", [])
+      setPRs("comments", [])
+      setPRs("diff", "")
+      setPRs("detailLoading", false)
+      return
+    }
+
+    // Set selected immediately from list data (no API call)
+    setPRs("selected", pr)
+
+    // Reset file diff view when switching PRs
+    setViewingFileDiff(false)
+    setPRFileSelectedIndex(0)
+
+    // Check per-PR cache
+    const cached = getCachedDetail(pr.number)
+    if (cached) {
+      setPRs("files", cached.files)
+      setPRs("reviews", cached.reviews)
+      setPRs("comments", cached.comments)
+      setPRs("diff", cached.diff)
+      setPRs("detailLoading", false)
+      return
+    }
+
+    // Clear stale detail data and show loading
+    setPRs("files", [])
+    setPRs("reviews", [])
+    setPRs("comments", [])
+    setPRs("diff", "")
+    setPRs("detailLoading", true)
+
+    // Debounce the API call
+    debounceTimer = setTimeout(() => {
+      loadPRDetail(pr.number).catch((err: unknown) => {
+        logError("PR auto-load failed", {
+          prNumber: pr.number,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      })
+    }, LOAD_DEBOUNCE_MS)
+  })
 }
 
 // ── Actions ──────────────────────────────────────────────────
@@ -102,42 +244,8 @@ export async function refreshPRs(forceRefresh = false): Promise<void> {
   }
 }
 
-export async function selectPR(number: number): Promise<void> {
-  setPRs("loading", true)
-  setPRs("error", null)
-
-  try {
-    const [detail, files, reviews, comments, diff] = await Promise.all([
-      getPRDetail(number),
-      getPRFiles(number),
-      getPRReviews(number),
-      getPRComments(number),
-      getPRDiff(number),
-    ])
-
-    setPRs("selected", detail)
-    setPRs("files", files)
-    setPRs("reviews", reviews)
-    setPRs("comments", comments)
-    setPRs("diff", diff)
-    setPRFileSelectedIndex(0)
-    setViewingPRDetail(true)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    logError("Failed to load PR detail", { prNumber: number, error: msg })
-    setPRs("error", msg)
-  } finally {
-    setPRs("loading", false)
-  }
-}
-
-export function closePRDetail(): void {
-  setPRs("selected", null)
-  setPRs("files", [])
-  setPRs("reviews", [])
-  setPRs("comments", [])
-  setPRs("diff", "")
-  setViewingPRDetail(false)
+export function closeFileDiff(): void {
+  setViewingFileDiff(false)
 }
 
 export async function submitReview(event: ReviewEvent, body: string): Promise<void> {
@@ -146,7 +254,8 @@ export async function submitReview(event: ReviewEvent, body: string): Promise<vo
 
   try {
     await createReview(pr.number, event, body)
-    // Refresh reviews after submitting
+    // Refresh reviews after submitting — invalidate cache
+    invalidateDetailCache(pr.number)
     const reviews = await getPRReviews(pr.number)
     setPRs("reviews", reviews)
   } catch (err) {
@@ -160,7 +269,8 @@ export async function submitComment(body: string, path: string, line: number): P
 
   try {
     await addCommentCmd(pr.number, body, path, line)
-    // Refresh comments after adding
+    // Refresh comments after adding — invalidate cache
+    invalidateDetailCache(pr.number)
     const comments = await getPRComments(pr.number)
     setPRs("comments", comments)
   } catch (err) {
@@ -174,8 +284,11 @@ export async function merge(method: MergeMethod): Promise<void> {
 
   try {
     await mergePR(pr.number, method)
-    closePRDetail()
-    await refreshPRs()
+    // Invalidate caches
+    invalidateDetailCache(pr.number)
+    prListCache.invalidate()
+    // Refresh list
+    await refreshPRs(true)
   } catch (err) {
     setPRs("error", err instanceof Error ? err.message : String(err))
   }
