@@ -39,3 +39,27 @@ This is a terminal UI app using Solid.js + OpenTUI — NOT a web app.
 - JSX primitives are `<box>`, `<text>`, `<scrollbox>`, `<diff>` — NOT `<div>`, `<span>`
 - `jsxImportSource` is `@opentui/solid`, NOT `solid-js`
 - See `AGENTS.md` for full code style, architecture, and conventions
+
+## Principles (Non-Negotiable)
+
+- **SOLID, KISS, YAGNI, DRY** — follow these principles strictly in all code.
+- **Declarative over imperative** — write declarative, scalable code. Never use imperative patterns
+  where a declarative alternative exists (e.g. prefer `<For>`, `<Show>`, `createMemo` over manual
+  loops, if-else chains, or mutable accumulators in UI code).
+- **No `any`** — `any` is **strictly forbidden**. No `as any`, no `param: any`, no `any` anywhere.
+  If TypeScript complains, the type is wrong — fix the type, don't silence the compiler.
+  If a third-party library forces `any`, wrap it in a typed helper.
+- **No magic strings or numbers** — extract all literals into named constants (`SCREAMING_SNAKE_CASE`).
+  The only exceptions are: `0`, `1`, `-1`, `""`, `true`, `false`, and single-use format strings.
+
+## Skills
+
+Always load relevant skills before writing code. Multiple skills can apply at once.
+
+| Skill | Trigger | Description |
+|-------|---------|-------------|
+| `opentui` | OpenTUI components, `<box>`, `<text>`, `<input>`, layout | Comprehensive OpenTUI reference — components, layout, keyboard, animations, testing |
+| `terminal-ui` | TUI performance, CLI prompts, rendering | Terminal UI performance and UX guidelines for TypeScript apps |
+| `interface-design` | Dashboards, admin panels, apps, tools | Interface design for interactive products (NOT marketing) |
+| `systematic-debugging` | Bugs, test failures, unexpected behavior | Debug protocol: find root cause BEFORE proposing fixes |
+| `verification-before-completion` | About to claim work is done | Run verification commands and confirm output before success claims |

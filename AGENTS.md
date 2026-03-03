@@ -34,6 +34,18 @@ No linter/formatter configured. TypeScript strict mode is the only static analys
 - `jsxImportSource: "@opentui/solid"` — NOT `solid-js`
 - Path aliases: `@core/*`, `@ui/*`, `@state/*`, `@lib/*` (but relative paths are more common)
 
+## Principles
+
+- **SOLID, KISS, YAGNI, DRY** — follow these principles strictly in all code.
+- **Declarative over imperative** — write declarative, scalable code. Never use imperative patterns
+  where a declarative alternative exists (e.g. prefer `<For>`, `<Show>`, `createMemo` over manual
+  loops, if-else chains, or mutable accumulators in UI code).
+- **No `any`** — `any` is **strictly forbidden**. No `as any`, no `param: any`, no `any` anywhere.
+  If TypeScript complains, the type is wrong — fix the type, don't silence the compiler.
+  If a third-party library forces `any`, wrap it in a typed helper.
+- **No magic strings or numbers** — extract all literals into named constants (`SCREAMING_SNAKE_CASE`).
+  The only exceptions are: `0`, `1`, `-1`, `""`, `true`, `false`, and single-use format strings.
+
 ## Code Style
 
 ### Formatting
@@ -126,7 +138,10 @@ Every file starts with a one-line descriptive comment:
 - Multi-word intrinsics use snake_case: `<tab_select>`, `<ascii_font>`
 - Layout via flexbox props: `flexDirection`, `flexGrow`, `width`, `height`, `gap`, `padding`
 - Colors via `fg`/`bg` props on `<text>` — `<span>` does NOT support colors
-- `<input>` uses `value` prop; `<textarea>` uses `initialValue` + `onContentChange`
+- `<input>` uses `value` prop + `onInput` for change events (passes `string`).
+  **Never** use `onContentChange` on `<input>` — it passes a `ContentChangeEvent` object, not a string.
+- `<textarea>` uses `initialValue` + `onContentChange` (passes `string` in Solid bindings),
+  or the `ref` + `ref.plainText` pattern
 - Dialogs via `@opentui-ui/dialog/solid`: `useDialog()`, `useDialogKeyboard()`
 - **Always** add `flexShrink={0}` to boxes with fixed dimensions (explicit `width`/`height`)
   sitting alongside `flexGrow={1}` siblings — prevents OpenTUI flex engine from collapsing them
@@ -159,3 +174,15 @@ scripts/                # Build + install scripts
 - Config: TOML via `smol-toml` — loaded from `~/.config/gittui/config.toml`, merged with defaults
 - Action registry (`src/state/actions.ts`): views register dialog handlers at mount,
   `global-keys.tsx` dispatches to them — decouples keyboard handling from view code
+
+## Skills
+
+Always load relevant skills before writing code. Multiple skills can apply at once.
+
+| Skill | Trigger | Description |
+|-------|---------|-------------|
+| `opentui` | OpenTUI components, `<box>`, `<text>`, `<input>`, layout | Comprehensive OpenTUI reference — components, layout, keyboard, animations, testing |
+| `terminal-ui` | TUI performance, CLI prompts, rendering | Terminal UI performance and UX guidelines for TypeScript apps |
+| `interface-design` | Dashboards, admin panels, apps, tools | Interface design for interactive products (NOT marketing) |
+| `systematic-debugging` | Bugs, test failures, unexpected behavior | Debug protocol: find root cause BEFORE proposing fixes |
+| `verification-before-completion` | About to claim work is done | Run verification commands and confirm output before success claims |
