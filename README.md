@@ -40,8 +40,8 @@ GITTUI_INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/rsb
 ### npm
 
 ```bash
-# Requires Bun to be installed
-npm install -g gittui
+# Requires Bun runtime to be installed (bin entry points to TypeScript source)
+npm install -g @rsbmk1/gittui
 ```
 
 ### Build from Source
@@ -58,11 +58,9 @@ bun run dev
 
 # Compile a standalone binary
 bun run build           # Binary for current platform → ./gittui
-bun run build:current   # Same, via build script
-bun run build:all       # Cross-compile for all 4 targets → ./dist/
 ```
 
-Build targets: `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`. The compiled binary is self-contained — no Bun or Node.js needed to run it.
+Build targets: `darwin-arm64`, `linux-arm64`, `linux-x64`. The compiled binary is self-contained — no Bun or Node.js needed to run it.
 
 ## Usage
 

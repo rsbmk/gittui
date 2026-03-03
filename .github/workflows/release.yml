@@ -89,7 +89,7 @@ jobs:
           LINUX_ARM64_SHA=$(sha256sum artifacts/gittui-linux-arm64.tar.gz | cut -d' ' -f1)
           LINUX_X64_SHA=$(sha256sum artifacts/gittui-linux-x64.tar.gz | cut -d' ' -f1)
 
-          cat > homebrew-tap/Formula/gittui.rb << FORMULA
+          cat > Formula/gittui.rb << FORMULA
           class Gittui < Formula
             desc "Modern terminal git client"
             homepage "https://github.com/rsbmk/gittui"
@@ -129,5 +129,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add homebrew-tap/Formula/gittui.rb
+          git add Formula/gittui.rb
           git diff --staged --quiet || (git commit -m "chore(homebrew): update formula to ${GITHUB_REF_NAME#v}" && git push origin main)
