@@ -16,11 +16,11 @@ jobs:
           - target: darwin-arm64
             os: macos-latest
           - target: darwin-x64
-            os: macos-latest
+            os: macos-13
           - target: linux-x64
             os: ubuntu-latest
           - target: linux-arm64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
 
     runs-on: ${{ matrix.os }}
 
@@ -31,14 +31,8 @@ jobs:
 
       - run: bun install
 
-      - name: Install target platform OpenTUI bindings
-        run: |
-          OPENTUI_VERSION=$(node -p "require('./node_modules/@opentui/core/package.json').version")
-          echo "Installing @opentui/core-${{ matrix.target }}@${OPENTUI_VERSION}"
-          bun add @opentui/core-${{ matrix.target }}@${OPENTUI_VERSION}
-
       - name: Build binary
-        run: bun build --compile --target=bun-${{ matrix.target }} --outfile=gittui src/index.ts
+        run: bun --preload @opentui/solid/preload build --compile --target=bun-${{ matrix.target }} --outfile=gittui src/index.ts
 
       - name: Create tarball
         run: tar czf gittui-${{ matrix.target }}.tar.gz gittui
