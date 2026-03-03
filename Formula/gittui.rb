@@ -7,19 +7,19 @@ class Gittui < Formula
   on_macos do
     on_arm do
       url "https://github.com/rsbmk/gittui/releases/download/v#{version}/gittui-darwin-arm64.tar.gz"
-      sha256 "98bddd3dbe374836d10808f2951d6124ad3ae5fc32828e8b71afed7ececf5251"
+      sha256 "a1867041083ad2c024d4ab497798978682d38315c68b396d97d2741b306b4982"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/rsbmk/gittui/releases/download/v#{version}/gittui-linux-arm64.tar.gz"
-      sha256 "4eccb82ac74bf5c49c4e3ef51cb168c5c7ca95ce3584b1abbbadbaa4335c01de"
+      sha256 "492f9a14162ccdd38b9d8fbf36afa3e7f360d863ab409091ee3f3d01a23410cf"
     end
 
     on_intel do
       url "https://github.com/rsbmk/gittui/releases/download/v#{version}/gittui-linux-x64.tar.gz"
-      sha256 "203c94d3612c346d193568cfc7601035862b70e25be4f8184ae00a2e5a8d84fb"
+      sha256 "68d1461860e84dd38424da665322a421e913351b22d9bc146cfbfe83dc3de2ba"
     end
   end
 
