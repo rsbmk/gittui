@@ -1,10 +1,18 @@
 {
   "name": "@rsbmk1/gittui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Modern terminal git client",
   "license": "MIT",
   "author": "rsbmk",
-  "keywords": ["git", "terminal", "tui", "cli", "lazygit", "solid", "opentui"],
+  "keywords": [
+    "git",
+    "terminal",
+    "tui",
+    "cli",
+    "lazygit",
+    "solid",
+    "opentui"
+  ],
   "type": "module",
   "bin": {
     "gittui": "./src/index.ts"
