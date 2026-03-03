@@ -26,9 +26,8 @@
   },
   "scripts": {
     "dev": "bun --preload @opentui/solid/preload --hot src/index.ts",
-    "build": "bun --preload @opentui/solid/preload build --compile --outfile=gittui src/index.ts",
+    "build": "bun run scripts/build.ts --current",
     "build:all": "bun run scripts/build.ts",
-    "build:current": "bun run scripts/build.ts --current",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
