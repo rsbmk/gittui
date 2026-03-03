@@ -10,6 +10,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: darwin-arm64
@@ -29,6 +30,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - run: bun install
+
+      - name: Install target platform OpenTUI bindings
+        run: |
+          OPENTUI_VERSION=$(node -p "require('./node_modules/@opentui/core/package.json').version")
+          echo "Installing @opentui/core-${{ matrix.target }}@${OPENTUI_VERSION}"
+          bun add @opentui/core-${{ matrix.target }}@${OPENTUI_VERSION}
 
       - name: Build binary
         run: bun build --compile --target=bun-${{ matrix.target }} --outfile=gittui src/index.ts
@@ -66,6 +73,11 @@ jobs:
 
       - run: bun install
 
-      - run: bunx npm publish --access public
+      - name: Configure npm auth
+        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - run: npm publish --access public
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

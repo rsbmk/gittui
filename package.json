@@ -1,5 +1,5 @@
 {
-  "name": "gittui",
+  "name": "@rsbmk/gittui",
   "version": "0.1.0",
   "description": "Modern terminal git client",
   "license": "MIT",
