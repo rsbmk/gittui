@@ -15,7 +15,7 @@ git tag v0.1.0 → push tag → GitHub Actions triggers:
 | Channel | What users run | Requires |
 |---------|---------------|----------|
 | **curl** | `curl -fsSL ... \| sh` | GitHub Release with binaries |
-| **npm** | `npm i -g @rsbmk/gittui` | npm account + `NPM_TOKEN` secret |
+| **npm** | `npm i -g @rsbmk1/gittui` | npm account + `NPM_TOKEN` secret |
 | **Homebrew** | `brew tap rsbmk/gittui <repo-url> && brew install gittui` | `Formula/` dir in this repo |
 | **Source** | `git clone` + `bun run build` | Nothing extra |
 
@@ -73,7 +73,7 @@ npm view gittui
 ```
 
 If the name is taken, you'll need to either:
-- Use a scoped name: `@rsbmk/gittui` (update `name` in package.json)
+- Use a scoped name: `@rsbmk1/gittui` (update `name` in package.json)
 - Pick a different name
 
 ### 0.4 — Make sure tests and typecheck pass
@@ -214,7 +214,7 @@ After this works, subsequent releases are automated via the GitHub Actions workf
 
 ### 2.6 — Important: npm install requires Bun
 
-Users installing via `npm i -g @rsbmk/gittui` need Bun installed because the `bin` entry
+Users installing via `npm i -g @rsbmk1/gittui` need Bun installed because the `bin` entry
 points to `./src/index.ts` (not a compiled binary). This is already noted in the README.
 
 If you want npm users to NOT need Bun, you'd need a postinstall script that downloads
@@ -384,7 +384,7 @@ npm:
   [ ] NPM_TOKEN generated (granular access token)
   [ ] NPM_TOKEN added as GitHub secret (gh secret set NPM_TOKEN)
   [ ] npm publish succeeded (check workflow logs)
-   [ ] npm i -g @rsbmk/gittui works (on a machine with Bun)
+   [ ] npm i -g @rsbmk1/gittui works (on a machine with Bun)
 
 Homebrew:
   [ ] SHA256 computed for all 4 tarballs
