@@ -1,46 +1,48 @@
 // src/ui/views/branches.tsx
-// Branches tab view — branch list + checkout/create/delete/merge/rebase
+// Branches tab view — branch detail + checkout/create/delete/merge/rebase/rename/upstream
 
-import { createSignal, onMount, onCleanup } from "solid-js"
+import { createSignal, createEffect, onMount, onCleanup } from "solid-js"
 import { useDialog } from "@opentui-ui/dialog/solid"
-import { BranchList, BRANCH_FILTER, type BranchFilter } from "../components/branch-list.tsx"
+import { BranchDetail } from "./branch-detail.tsx"
 import { ConfirmDialog } from "../components/confirm-dialog.tsx"
 import { PromptDialog } from "../components/prompt-dialog.tsx"
 import { AlertDialog, formatGitError } from "../components/alert-dialog.tsx"
 import { dialogConfig } from "../components/dialog-styles.ts"
-import { repo, refreshBranches, refreshStatus } from "../../state/repo.ts"
 import {
   checkout,
   createBranch,
   deleteBranch,
+  deleteRemoteBranch,
   mergeBranch,
   rebaseBranch,
+  renameBranch,
+  setUpstream,
+  getBranchDiff,
+  sanitizeBranchName,
 } from "../../core/git/commands.ts"
+import { repo, refreshBranches, refreshStatus, pushBranch, pullBranch, fetchAll } from "../../state/repo.ts"
+import { config } from "../../state/config.ts"
 import { registerAction, unregisterAction } from "../../state/actions.ts"
-import { withDialog } from "../../state/ui.ts"
+import { withDialog, showStatusMessage } from "../../state/ui.ts"
 import type { GitBranch } from "../../core/git/types.ts"
+import type { BranchDiffFile } from "./branch-detail.tsx"
 
 // ── State ────────────────────────────────────────────────────
 
 const [branchSelectedIndex, setBranchSelectedIndex] = createSignal(0)
-const [branchFilter, setBranchFilter] = createSignal<BranchFilter>(BRANCH_FILTER.LOCAL)
+const [branchDiffFiles, setBranchDiffFiles] = createSignal<BranchDiffFile[]>([])
+const [branchDetailLoading, setBranchDetailLoading] = createSignal(false)
 
-// ── Filtered branches helper ────────────────────────────────
+// ── Branch helpers ──────────────────────────────────────────
 
-function getFilteredBranches(): GitBranch[] {
-  const all = repo.branches
-  switch (branchFilter()) {
-    case BRANCH_FILTER.LOCAL:
-      return all.filter((b) => !b.remote)
-    case BRANCH_FILTER.REMOTE:
-      return all.filter((b) => !!b.remote)
-    case BRANCH_FILTER.ALL:
-      return all
-  }
+function allBranches(): GitBranch[] {
+  const local = repo.branches.filter((b) => !b.remote)
+  const remote = repo.branches.filter((b) => !!b.remote)
+  return [...local, ...remote]
 }
 
-function selectedBranch(): GitBranch | undefined {
-  return getFilteredBranches()[branchSelectedIndex()]
+export function selectedBranch(): GitBranch | undefined {
+  return allBranches()[branchSelectedIndex()]
 }
 
 // ── Actions (exported for global-keys) ───────────────────────
@@ -58,7 +60,16 @@ export async function handleDeleteBranch(force = false): Promise<void> {
   const branch = selectedBranch()
   if (!branch || branch.current) return
 
-  await deleteBranch(branch.name, force)
+  if (branch.remote) {
+    // Remote branch: "origin/feature" → remote="origin", branch="feature"
+    const slashIdx = branch.name.indexOf("/")
+    if (slashIdx === -1) return
+    const remote = branch.name.slice(0, slashIdx)
+    const remoteBranch = branch.name.slice(slashIdx + 1)
+    await deleteRemoteBranch(remote, remoteBranch)
+  } else {
+    await deleteBranch(branch.name, force)
+  }
   await refreshBranches()
 }
 
@@ -66,7 +77,8 @@ export async function handleMerge(): Promise<void> {
   const branch = selectedBranch()
   if (!branch || branch.current) return
 
-  await mergeBranch(branch.name)
+  const strategy = config().git.merge_strategy
+  await mergeBranch(branch.name, strategy)
   await refreshStatus()
   await refreshBranches()
 }
@@ -80,19 +92,24 @@ export async function handleRebase(): Promise<void> {
   await refreshBranches()
 }
 
-export function cycleBranchFilter(): void {
-  const order: BranchFilter[] = [BRANCH_FILTER.LOCAL, BRANCH_FILTER.REMOTE, BRANCH_FILTER.ALL]
-  const idx = order.indexOf(branchFilter())
-  setBranchFilter(order[(idx + 1) % order.length]!)
-  setBranchSelectedIndex(0)
+export async function handlePush(): Promise<void> {
+  await pushBranch()
+}
+
+export async function handlePull(): Promise<void> {
+  await pullBranch()
+}
+
+export async function handleFetch(): Promise<void> {
+  await fetchAll()
 }
 
 // Navigation for global-keys
 export function branchListLength(): number {
-  return getFilteredBranches().length
+  return allBranches().length
 }
 
-export { branchSelectedIndex, setBranchSelectedIndex, branchFilter }
+export { branchSelectedIndex, setBranchSelectedIndex }
 
 // ── Component ────────────────────────────────────────────────
 
@@ -106,12 +123,16 @@ export function BranchesView() {
     registerAction("newBranch", promptNewBranch)
     registerAction("deleteBranch", () => confirmDeleteBranch(false))
     registerAction("forceDeleteBranch", () => confirmDeleteBranch(true))
+    registerAction("renameBranch", promptRenameBranch)
+    registerAction("setUpstream", promptSetUpstream)
   })
 
   onCleanup(() => {
     unregisterAction("newBranch")
     unregisterAction("deleteBranch")
     unregisterAction("forceDeleteBranch")
+    unregisterAction("renameBranch")
+    unregisterAction("setUpstream")
   })
 
   // Show error alert
@@ -149,10 +170,14 @@ export function BranchesView() {
     }))
 
     if (name) {
+      const sanitized = sanitizeBranchName(name)
+      if (!sanitized) return
+
       try {
-        await createBranch(name)
+        await createBranch(sanitized)
         await refreshBranches()
         await refreshStatus()
+        showStatusMessage(`✓ Created branch ${sanitized}`)
       } catch (err) {
         await showError("Create Branch Failed", err)
       }
@@ -164,11 +189,19 @@ export function BranchesView() {
     const branch = selectedBranch()
     if (!branch || branch.current) return
 
+    const isRemote = !!branch.remote
+    const title = isRemote
+      ? "Delete Remote Branch"
+      : `${force ? "Force Delete" : "Delete"} Branch`
+    const message = isRemote
+      ? `Delete remote branch "${branch.name}"? This will remove it from the remote.`
+      : `Delete branch "${branch.name}"?`
+
     const confirmed = await withDialog(() => dialog.confirm({
       content: (ctx) => () => (
         <ConfirmDialog
-          title={`${force ? "Force Delete" : "Delete"} Branch`}
-          message={`Delete branch "${branch.name}"?`}
+          title={title}
+          message={message}
           confirmLabel="delete"
           destructive={true}
           resolve={ctx.resolve}
@@ -183,19 +216,113 @@ export function BranchesView() {
     if (confirmed) {
       try {
         await handleDeleteBranch(force)
+        showStatusMessage(`✓ Deleted ${isRemote ? "remote " : ""}branch ${branch.name}`)
       } catch (err) {
         await showError("Delete Branch Failed", err)
       }
     }
   }
 
+  // Rename branch prompt
+  async function promptRenameBranch(): Promise<void> {
+    const branch = selectedBranch()
+    if (!branch || branch.remote) return
+
+    const newName = await withDialog(() => dialog.prompt<string>({
+      content: (ctx) => () => (
+        <PromptDialog
+          title="Rename Branch"
+          label="New name"
+          confirmLabel="rename"
+          initialValue={branch.name}
+          resolve={ctx.resolve}
+          dismiss={ctx.dismiss}
+          dialogId={ctx.dialogId}
+        />
+      ),
+      ...dialogConfig(),
+    }))
+
+    if (newName) {
+      const sanitized = sanitizeBranchName(newName)
+      if (!sanitized || sanitized === branch.name) return
+
+      try {
+        await renameBranch(branch.name, sanitized)
+        await refreshBranches()
+        showStatusMessage(`✓ Renamed to ${sanitized}`)
+      } catch (err) {
+        await showError("Rename Branch Failed", err)
+      }
+    }
+  }
+
+  // Set upstream prompt
+  async function promptSetUpstream(): Promise<void> {
+    const branch = selectedBranch()
+    if (!branch || branch.remote) return
+
+    const upstream = await withDialog(() => dialog.prompt<string>({
+      content: (ctx) => () => (
+        <PromptDialog
+          title="Set Upstream"
+          label="Remote/branch (e.g. origin/main)"
+          confirmLabel="set"
+          initialValue={branch.upstream ?? ""}
+          resolve={ctx.resolve}
+          dismiss={ctx.dismiss}
+          dialogId={ctx.dialogId}
+        />
+      ),
+      ...dialogConfig(),
+    }))
+
+    if (upstream) {
+      try {
+        await setUpstream(branch.name, upstream)
+        await refreshBranches()
+        showStatusMessage(`✓ Upstream set to ${upstream}`)
+      } catch (err) {
+        await showError("Set Upstream Failed", err)
+      }
+    }
+  }
+
+  // Load changed files when selected branch changes
+  createEffect(async () => {
+    const branch = selectedBranch()
+    const currentBranch = repo.status?.branch
+    if (!branch || !currentBranch || branch.name === currentBranch) {
+      setBranchDiffFiles([])
+      return
+    }
+
+    setBranchDetailLoading(true)
+    try {
+      const output = await getBranchDiff(currentBranch, branch.name)
+      const files: BranchDiffFile[] = output
+        .split("\n")
+        .filter((line) => line.trim())
+        .map((line) => {
+          const status = line.charAt(0)!
+          const path = line.slice(1).trim()
+          return { status, path }
+        })
+      setBranchDiffFiles(files)
+    } catch {
+      setBranchDiffFiles([])
+    } finally {
+      setBranchDetailLoading(false)
+    }
+  })
+
   return (
     <box flexDirection="column" flexGrow={1}>
-      <BranchList
-        branches={repo.branches}
-        selectedIndex={branchSelectedIndex()}
-        filter={branchFilter()}
-        onSelect={(_, idx) => setBranchSelectedIndex(idx)}
+      <BranchDetail
+        branch={selectedBranch()}
+        currentBranch={repo.status?.branch ?? ""}
+        changedFiles={branchDiffFiles()}
+        loading={branchDetailLoading()}
       />
     </box>
   )

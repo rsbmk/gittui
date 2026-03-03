@@ -21,7 +21,6 @@ import { ScrollList } from "../components/scroll-list.tsx"
 import {
   branchSelectedIndex,
   setBranchSelectedIndex,
-  branchFilter,
 } from "../views/branches.tsx"
 import {
   commitSelectedIndex,
@@ -87,8 +86,16 @@ function selectedRow(): number {
       }
       return 0
     }
-    case TAB_ID.BRANCHES:
-      return 1 + branchSelectedIndex()
+    case TAB_ID.BRANCHES: {
+      const idx = branchSelectedIndex()
+      const localCount = repo.branches.filter((b) => !b.remote).length
+      // LOCAL header + local items, then REMOTES header offset
+      if (localCount > 0 && idx < localCount) {
+        return 1 + idx // LOCAL header row + offset
+      }
+      const rowsAboveRemotes = localCount > 0 ? 1 + localCount : 0
+      return rowsAboveRemotes + 1 + (idx - localCount) // REMOTES header row + offset
+    }
     case TAB_ID.COMMITS:
       return 1 + commitSelectedIndex()
     case TAB_ID.PRS:
@@ -175,7 +182,6 @@ export function Sidebar() {
           <BranchList
             branches={repo.branches}
             selectedIndex={branchSelectedIndex()}
-            filter={branchFilter()}
             onSelect={(_, idx) => setBranchSelectedIndex(idx)}
           />
         </Show>

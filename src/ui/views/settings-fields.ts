@@ -127,6 +127,20 @@ export const SETTINGS_SECTIONS: SectionDef[] = [
     ],
   },
   {
+    key: "git",
+    label: "Git",
+    fields: [
+      {
+        key: "merge_strategy",
+        label: "Merge Strategy",
+        type: FIELD_TYPE.CYCLE,
+        section: "git",
+        options: ["merge", "no-ff", "ff-only", "squash"],
+        getValue: (c) => c.git.merge_strategy,
+      },
+    ],
+  },
+  {
     key: "github",
     label: "GitHub",
     fields: [

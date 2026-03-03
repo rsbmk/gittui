@@ -23,6 +23,21 @@ function mergeStateLabel(state: MergeState): string {
   }
 }
 
+// ── Push/Pull/Fetch Label ────────────────────────────────────
+
+function pushPullLabelText(state: string, branch: string): string {
+  switch (state) {
+    case "pushing":
+      return `Pushing ${branch}...`
+    case "pulling":
+      return `Pulling ${branch}...`
+    case "fetching":
+      return "Fetching..."
+    default:
+      return ""
+  }
+}
+
 // ── Component ────────────────────────────────────────────────
 
 export function StatusBar() {
@@ -35,6 +50,8 @@ export function StatusBar() {
     const ms = mergeState()
     return ms !== null && ms.type !== MERGE_STATE.NONE
   }
+  const pushPullState = () => repo.pushPullState
+  const pushPullLabel = () => pushPullLabelText(pushPullState(), branch())
 
   return (
     <box flexDirection="row" width="100%" height={1} backgroundColor="#1e1e2e">
@@ -48,6 +65,13 @@ export function StatusBar() {
       <Show when={isMerging()}>
         <text fg="#f38ba8">
           <b> ⚠ {mergeStateLabel(mergeState()!)} </b>
+        </text>
+      </Show>
+
+      {/* Push/Pull/Fetch indicator */}
+      <Show when={pushPullState() !== "idle"}>
+        <text fg="#f9e2af">
+          <b> ⟳ {pushPullLabel()} </b>
         </text>
       </Show>
 
