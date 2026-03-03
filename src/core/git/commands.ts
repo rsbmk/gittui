@@ -4,6 +4,7 @@
 import { exec } from "../../lib/shell.ts"
 import { parseBranches, parseCommitFiles, parseCommitStats, parseDiff, parseLog, parseMergeState, parseStash, parseStatus } from "./parser.ts"
 import type { CommitStats, FileDiff, GitBranch, GitCommit, GitFile, GitStash, GitStatus, MergeState } from "./types.ts"
+import type { MergeStrategy } from "../config/schema.ts"
 import { FILE_STATUS, MERGE_STATE } from "./types.ts"
 
 // ── Error ─────────────────────────────────────────────────────
@@ -30,6 +31,24 @@ async function run(args: string[], cwd?: string): Promise<string> {
   }
 
   return result.stdout
+}
+
+/**
+ * Sanitize a string into a valid git branch name.
+ * Replaces spaces with hyphens, strips invalid ref characters,
+ * and normalizes the result (similar to GitHub's behavior).
+ */
+export function sanitizeBranchName(name: string): string {
+  return name
+    .trim()
+    .replace(/\s+/g, "-")            // spaces → hyphens
+    .replace(/\.{2,}/g, ".")         // consecutive dots → single dot
+    .replace(/[~^:?*\[\]\\@{]/g, "") // strip invalid git ref characters
+    .replace(/\/\//g, "/")           // double slashes → single
+    .replace(/^[-./]+/, "")          // can't start with - . /
+    .replace(/\.lock$/i, "")         // can't end with .lock
+    .replace(/[./]+$/, "")           // can't end with . or /
+    .replace(/-{2,}/g, "-")          // consecutive hyphens → single
 }
 
 // ── Queries ───────────────────────────────────────────────────
@@ -172,8 +191,26 @@ export async function deleteBranch(name: string, force?: boolean, cwd?: string):
   await run(["branch", force ? "-D" : "-d", name], cwd)
 }
 
-export async function mergeBranch(branch: string, cwd?: string): Promise<void> {
-  await run(["merge", branch], cwd)
+export async function deleteRemoteBranch(remote: string, branch: string, cwd?: string): Promise<void> {
+  await run(["push", remote, "--delete", branch], cwd)
+}
+
+export async function mergeBranch(branch: string, strategy?: MergeStrategy, cwd?: string): Promise<void> {
+  const args = ["merge"]
+  switch (strategy) {
+    case "no-ff":
+      args.push("--no-ff")
+      break
+    case "ff-only":
+      args.push("--ff-only")
+      break
+    case "squash":
+      args.push("--squash")
+      break
+    // "merge" = default git behavior, no extra flags
+  }
+  args.push(branch)
+  await run(args, cwd)
 }
 
 export async function rebaseBranch(onto: string, cwd?: string): Promise<void> {
@@ -285,6 +322,42 @@ export async function stageHunk(patchContent: string, cwd?: string): Promise<voi
     const stderr = await new Response(proc.stderr).text()
     throw new GitCommandError("apply --cached", stderr)
   }
+}
+
+// ── Remote ────────────────────────────────────────────────────
+
+export async function push(remote?: string, branch?: string, cwd?: string): Promise<string> {
+  const args = ["push"]
+  if (remote) args.push(remote)
+  if (branch) args.push(branch)
+  return run(args, cwd)
+}
+
+export async function pull(remote?: string, cwd?: string): Promise<string> {
+  const args = ["pull"]
+  if (remote) args.push(remote)
+  return run(args, cwd)
+}
+
+export async function fetchRemote(remote?: string, cwd?: string): Promise<string> {
+  const args = ["fetch"]
+  if (remote) args.push(remote)
+  else args.push("--all")
+  return run(args, cwd)
+}
+
+// ── Branch Operations ─────────────────────────────────────────
+
+export async function renameBranch(oldName: string, newName: string, cwd?: string): Promise<string> {
+  return run(["branch", "-m", oldName, newName], cwd)
+}
+
+export async function setUpstream(branch: string, upstream: string, cwd?: string): Promise<string> {
+  return run(["branch", "--set-upstream-to=" + upstream, branch], cwd)
+}
+
+export async function getBranchDiff(base: string, compare: string, cwd?: string): Promise<string> {
+  return run(["diff", "--name-status", base + ".." + compare], cwd)
 }
 
 // ── Conflict Resolution ───────────────────────────────────────

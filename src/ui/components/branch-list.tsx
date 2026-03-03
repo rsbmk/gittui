@@ -1,78 +1,99 @@
 // src/ui/components/branch-list.tsx
-// Branch list — shows local/remote branches with ahead/behind indicators
+// Minimal branch sidebar — LOCAL/REMOTES sections with selection
 
 import { createMemo, For, Show } from "solid-js"
 import type { GitBranch } from "../../core/git/types.ts"
-
-// ── Filter ───────────────────────────────────────────────────
-
-export const BRANCH_FILTER = {
-  LOCAL: "local",
-  REMOTE: "remote",
-  ALL: "all",
-} as const
-
-export type BranchFilter = (typeof BRANCH_FILTER)[keyof typeof BRANCH_FILTER]
+import { color } from "../../state/config.ts"
 
 // ── Props ────────────────────────────────────────────────────
 
 export interface BranchListProps {
   branches: GitBranch[]
   selectedIndex: number
-  filter: BranchFilter
   onSelect: (branch: GitBranch, index: number) => void
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+
+function trackingText(branch: GitBranch): string {
+  const parts: string[] = []
+  if (branch.ahead > 0) parts.push(`↑${branch.ahead}`)
+  if (branch.behind > 0) parts.push(`↓${branch.behind}`)
+  return parts.join(" ")
 }
 
 // ── Component ────────────────────────────────────────────────
 
 export function BranchList(props: BranchListProps) {
-  const filteredBranches = createMemo(() => {
-    switch (props.filter) {
-      case BRANCH_FILTER.LOCAL:
-        return props.branches.filter((b) => !b.remote)
-      case BRANCH_FILTER.REMOTE:
-        return props.branches.filter((b) => !!b.remote)
-      case BRANCH_FILTER.ALL:
-        return props.branches
-    }
-  })
+  const localBranches = createMemo(() =>
+    props.branches.filter((b) => !b.remote),
+  )
+
+  const remoteBranches = createMemo(() =>
+    props.branches.filter((b) => !!b.remote),
+  )
 
   return (
     <box flexDirection="column">
-      {/* Filter indicator */}
-      <text fg="#6c7086">
-        <b> BRANCHES ({filteredBranches().length}) [{props.filter}] </b>
-      </text>
-
-      <Show
-        when={filteredBranches().length > 0}
-        fallback={<text fg="#6c7086"> No branches found</text>}
-      >
-        <For each={filteredBranches()}>
+      {/* LOCAL section */}
+      <Show when={localBranches().length > 0}>
+        <text fg={color("muted")}>
+          <b> LOCAL ({localBranches().length})</b>
+        </text>
+        <For each={localBranches()}>
           {(branch, i) => {
-            const isSelected = () => props.selectedIndex === i()
-            const isCurrentBranch = () => branch.current
-
-            // Ahead/behind indicator
-            const trackingInfo = () => {
-              const parts: string[] = []
-              if (branch.ahead > 0) parts.push(`↑${branch.ahead}`)
-              if (branch.behind > 0) parts.push(`↓${branch.behind}`)
-              return parts.join(" ")
-            }
+            const globalIndex = () => i()
+            const isSelected = () => props.selectedIndex === globalIndex()
+            const tracking = () => trackingText(branch)
 
             return (
-              <box flexDirection="row" height={1} backgroundColor={isSelected() ? "#313244" : undefined}>
-                <text wrapMode="none" fg={isCurrentBranch() ? "#a6e3a1" : branch.remote ? "#6c7086" : "#cdd6f4"}>
+              <box
+                flexDirection="row"
+                height={1}
+                backgroundColor={isSelected() ? color("selection") : undefined}
+              >
+                <text wrapMode="none" fg={isSelected() ? color("accent") : undefined}>
                   {isSelected() ? "▸" : " "}
-                  {isCurrentBranch() ? "* " : "  "}
+                </text>
+                <text wrapMode="none" fg={branch.current ? color("success") : color("fg")}>
+                  {branch.current ? "* " : "  "}
                   {branch.name}
                 </text>
-                <Show when={trackingInfo()}>
-                  <text wrapMode="none" fg="#f9e2af"> {trackingInfo()}</text>
+                <Show when={tracking()}>
+                  <text wrapMode="none" fg={color("warning")}> {tracking()}</text>
                 </Show>
-                <Show when={branch.upstream}>
-                  <text wrapMode="none" fg="#6c7086"> → {branch.upstream}</text>
+              </box>
+            )
+          }}
+        </For>
+      </Show>
+
+      {/* REMOTES section */}
+      <Show when={remoteBranches().length > 0}>
+        <text fg={color("muted")}>
+          <b> REMOTES ({remoteBranches().length})</b>
+        </text>
+        <For each={remoteBranches()}>
+          {(branch, i) => {
+            const globalIndex = () => localBranches().length + i()
+            const isSelected = () => props.selectedIndex === globalIndex()
+            const tracking = () => trackingText(branch)
+
+            return (
+              <box
+                flexDirection="row"
+                height={1}
+                backgroundColor={isSelected() ? color("selection") : undefined}
+              >
+                <text wrapMode="none" fg={isSelected() ? color("accent") : undefined}>
+                  {isSelected() ? "▸" : " "}
+                </text>
+                <text wrapMode="none" fg={color("muted")}>
+                  {"  "}
+                  {branch.name}
+                </text>
+                <Show when={tracking()}>
+                  <text wrapMode="none" fg={color("warning")}> {tracking()}</text>
                 </Show>
               </box>
             )

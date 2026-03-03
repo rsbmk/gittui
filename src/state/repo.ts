@@ -3,9 +3,10 @@
 
 import { createStore } from "solid-js/store"
 import type { FileDiff, GitBranch, GitCommit, GitStash, GitStatus, MergeState } from "../core/git/types.ts"
-import { getBranches, getDiff, getLog, getMergeState, getStashList, getStatus } from "../core/git/commands.ts"
+import { fetchRemote, getBranches, getDiff, getLog, getMergeState, getStashList, getStatus, pull, push } from "../core/git/commands.ts"
 import { error as logError } from "../lib/logger.ts"
 import { config } from "./config.ts"
+import { showStatusMessage } from "./ui.ts"
 
 // ── State Interface ───────────────────────────────────────────
 
@@ -17,6 +18,7 @@ interface RepoState {
   stashes: GitStash[]
   mergeState: MergeState | null
   loading: boolean
+  pushPullState: "idle" | "pushing" | "pulling" | "fetching"
   error: string | null
 }
 
@@ -30,6 +32,7 @@ const [repo, setRepo] = createStore<RepoState>({
   stashes: [],
   mergeState: null,
   loading: false,
+  pushPullState: "idle",
   error: null,
 })
 
@@ -122,5 +125,47 @@ export async function refreshAll(): Promise<void> {
     setRepo("error", err instanceof Error ? err.message : String(err))
   } finally {
     setRepo("loading", false)
+  }
+}
+
+// ── Remote Operations ─────────────────────────────────────────
+
+export async function pushBranch(): Promise<void> {
+  setRepo("pushPullState", "pushing")
+  try {
+    await push()
+    await refreshBranches()
+    showStatusMessage("✓ Pushed successfully")
+  } catch (err) {
+    throw err
+  } finally {
+    setRepo("pushPullState", "idle")
+  }
+}
+
+export async function pullBranch(): Promise<void> {
+  setRepo("pushPullState", "pulling")
+  try {
+    await pull()
+    await refreshBranches()
+    await refreshStatus()
+    showStatusMessage("✓ Pulled successfully")
+  } catch (err) {
+    throw err
+  } finally {
+    setRepo("pushPullState", "idle")
+  }
+}
+
+export async function fetchAll(): Promise<void> {
+  setRepo("pushPullState", "fetching")
+  try {
+    await fetchRemote()
+    await refreshBranches()
+    showStatusMessage("✓ Fetched all remotes")
+  } catch (err) {
+    throw err
+  } finally {
+    setRepo("pushPullState", "idle")
   }
 }

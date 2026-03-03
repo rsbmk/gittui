@@ -54,7 +54,7 @@ import { RESOLVE_STRATEGY } from "../../core/git/conflict-parser.ts"
 import { useCommitDialog } from "../components/commit-modal.tsx"
 import { useAgentSelectDialog } from "../components/agent-select-modal.tsx"
 import { useConflictResolveDialog, CONFLICT_RESOLUTION } from "../components/conflict-resolve-modal.tsx"
-import { executeAction as executeRegisteredAction } from "../../state/actions.ts"
+import { executeAction as executeRegisteredAction, registerAction } from "../../state/actions.ts"
 import { detectInstalledAgents, generateCommitMessage } from "../../core/ai/agents.ts"
 import type { AgentId } from "../../core/ai/types.ts"
 import { getRawDiff } from "../../core/git/commands.ts"
@@ -65,7 +65,9 @@ import {
   handleCheckout,
   handleMerge,
   handleRebase,
-  cycleBranchFilter,
+  handlePush,
+  handlePull,
+  handleFetch,
   branchListLength,
   branchSelectedIndex,
   setBranchSelectedIndex,
@@ -221,11 +223,6 @@ async function handleStageToggle(): Promise<void> {
     return
   }
 
-  if (activePanel() === PANEL.MAIN) {
-    await stageCurrentHunk()
-    return
-  }
-
   const path = selectedFile()
   if (!path) return
 
@@ -281,7 +278,9 @@ const ACTION_HANDLERS: Record<string, () => void | Promise<void>> = {
   checkout: handleCheckout,
   merge: handleMerge,
   rebase: handleRebase,
-  filter: cycleBranchFilter,
+  push: handlePush,
+  pull: handlePull,
+  fetch: handleFetch,
 
   // Commits
   viewCommit: viewCommitDetail,
@@ -304,7 +303,16 @@ const ACTION_HANDLERS: Record<string, () => void | Promise<void>> = {
 
 function executeAction(action: string): void {
   const handler = ACTION_HANDLERS[action]
-  if (handler) handler()
+  if (handler) {
+    const result = handler()
+    if (result instanceof Promise) {
+      result.catch((err: unknown) => {
+        showStatusMessage(
+          err instanceof Error ? err.message : String(err),
+        )
+      })
+    }
+  }
 }
 
 // ── Component ────────────────────────────────────────────────
@@ -523,6 +531,33 @@ export function GlobalKeyHandler() {
     setCurrentSelectedIndex((prev) => Math.max(prev - 1, 0))
   }, 50)
 
+  // ── Register all actions for command palette ─────────────────
+
+  // Register ACTION_HANDLERS (stage, commit, checkout, etc.)
+  for (const [action, handler] of Object.entries(ACTION_HANDLERS)) {
+    registerAction(action, handler)
+  }
+
+  // Register tab switching
+  registerAction("switchTab:files", () => switchToTab(TAB_ID.FILES))
+  registerAction("switchTab:branches", () => switchToTab(TAB_ID.BRANCHES))
+  registerAction("switchTab:commits", () => switchToTab(TAB_ID.COMMITS))
+  registerAction("switchTab:stash", () => switchToTab(TAB_ID.STASH))
+  registerAction("switchTab:prs", () => switchToTab(TAB_ID.PRS))
+  registerAction("switchTab:settings", () => switchToTab(TAB_ID.SETTINGS))
+
+  // Register panel and chrome actions
+  registerAction("switchPanel", () => switchPanel())
+  registerAction("toggleSidebar", () => toggleSidebar())
+  registerAction("focusSidebar", () => { setActivePanel(PANEL.SIDEBAR) })
+  registerAction("focusMain", () => { setActivePanel(PANEL.MAIN) })
+  registerAction("moveDown", () => throttledMoveDown())
+  registerAction("moveUp", () => throttledMoveUp())
+  registerAction("quit", () => {
+    renderer.destroy()
+    process.exit(0)
+  })
+
   useKeyboard((key) => {
     // Don't intercept keys when overlays or dialogs are open
     if (commandPaletteOpen() || helpOverlayOpen() || dialogOpen()) return
@@ -550,14 +585,24 @@ export function GlobalKeyHandler() {
       return
     }
 
+    // ── Ctrl+key combinations ────────────────────────────────
+    // OpenTUI reports ctrl as a boolean modifier, NOT in key.name.
+    // key.ctrl = true, key.name = "b" — never "ctrl+b".
+    if (key.ctrl) {
+      switch (key.name) {
+        case "b":
+          toggleSidebar()
+          return
+      }
+      // Don't let ctrl+key combos fall through to single-key bindings
+      return
+    }
+
     // ── Settings tab — custom navigation ─────────────────────
     if (activeTab() === TAB_ID.SETTINGS) {
       switch (key.name) {
         case "tab":
           switchPanel()
-          return
-        case "ctrl+b":
-          toggleSidebar()
           return
         case ":":
           setCommandPaletteOpen(true)
@@ -619,9 +664,6 @@ export function GlobalKeyHandler() {
       case "tab":
         switchPanel()
         return
-      case "ctrl+b":
-        toggleSidebar()
-        return
       case ":":
         setCommandPaletteOpen(true)
         return
@@ -653,12 +695,16 @@ export function GlobalKeyHandler() {
       ? key.name.toUpperCase()
       : key.name
 
-    // Context-specific bindings
+    // Context-specific and dynamic global bindings
     const binding = findBinding(effectiveKey, activeTab())
-    if (binding && binding.context !== "global") {
-      // Try registered dialog handlers first, then static handlers
+    if (binding) {
+      // Try registered dialog handlers first (works for any context, including global)
       if (!executeRegisteredAction(binding.action)) {
-        executeAction(binding.action)
+        // Static handlers only for context-specific bindings
+        // (global bindings like tab/q/h/l/j/k are handled in the switch above)
+        if (binding.context !== "global") {
+          executeAction(binding.action)
+        }
       }
     }
   })

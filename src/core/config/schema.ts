@@ -22,6 +22,17 @@ export const DIFF_VIEW = {
 
 export type DiffView = (typeof DIFF_VIEW)[keyof typeof DIFF_VIEW]
 
+// ── Merge Strategy ────────────────────────────────────────────
+
+export const MERGE_STRATEGY = {
+  MERGE: "merge",
+  NO_FF: "no-ff",
+  FF_ONLY: "ff-only",
+  SQUASH: "squash",
+} as const
+
+export type MergeStrategy = (typeof MERGE_STRATEGY)[keyof typeof MERGE_STRATEGY]
+
 // ── Config Interfaces ─────────────────────────────────────────
 
 export interface GeneralConfig {
@@ -56,10 +67,15 @@ export interface AIConfig {
   commit_prompt: string | null
 }
 
+export interface GitConfig {
+  merge_strategy: MergeStrategy
+}
+
 export interface GuitConfig {
   general: GeneralConfig
   keybindings: KeybindingsConfig
   diff: DiffConfig
+  git: GitConfig
   github: GithubConfig
   ai: AIConfig
   syntax: SyntaxConfig

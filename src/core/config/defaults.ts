@@ -20,6 +20,9 @@ export const DEFAULT_CONFIG: GuitConfig = {
     show_line_numbers: true,
     syntax_theme: "catppuccin-mocha",
   },
+  git: {
+    merge_strategy: "merge",
+  },
   github: {
     auto_fetch_prs: true,
   },

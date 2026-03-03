@@ -55,13 +55,18 @@ const FILES_BINDINGS: Keybinding[] = [
 ]
 
 const BRANCHES_BINDINGS: Keybinding[] = [
+  { key: "space", action: "checkout", context: "branches", description: "Checkout branch" },
   { key: "enter", action: "checkout", context: "branches", description: "Checkout branch" },
   { key: "n", action: "newBranch", context: "branches", description: "New branch" },
   { key: "d", action: "deleteBranch", context: "branches", description: "Delete branch" },
   { key: "D", action: "forceDeleteBranch", context: "branches", description: "Force delete branch" },
   { key: "m", action: "merge", context: "branches", description: "Merge into current" },
   { key: "r", action: "rebase", context: "branches", description: "Rebase current onto" },
-  { key: "f", action: "filter", context: "branches", description: "Filter local/remote/all" },
+  { key: "P", action: "push", context: "branches", description: "Push" },
+  { key: "p", action: "pull", context: "branches", description: "Pull" },
+  { key: "F", action: "fetch", context: "branches", description: "Fetch all" },
+  { key: "R", action: "renameBranch", context: "branches", description: "Rename branch" },
+  { key: "u", action: "setUpstream", context: "branches", description: "Set upstream" },
 ]
 
 const COMMITS_BINDINGS: Keybinding[] = [
@@ -202,11 +207,14 @@ export function initKeybindings(preset: KeybindingPreset, custom: Record<string,
 export function findBinding(key: string, context: string): Keybinding | undefined {
   const all = keybindings()
 
+  // Normalize terminal key names — Node.js reports "return" but bindings use "enter"
+  const normalizedKey = key === "return" ? "enter" : key
+
   // Context-specific takes priority over global
-  const contextMatch = all.find((b) => b.key === key && b.context === context)
+  const contextMatch = all.find((b) => b.key === normalizedKey && b.context === context)
   if (contextMatch) return contextMatch
 
-  return all.find((b) => b.key === key && b.context === "global")
+  return all.find((b) => b.key === normalizedKey && b.context === "global")
 }
 
 export function getBindingsForContext(context: string): Keybinding[] {
