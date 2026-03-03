@@ -2,7 +2,7 @@
 // PR state — Solid.js store wrapping GitHub CLI operations
 
 import { createSignal, createEffect, createMemo } from "solid-js"
-import { createStore } from "solid-js/store"
+import { createStore, reconcile } from "solid-js/store"
 import type {
   PullRequest,
   PRFile,
@@ -234,7 +234,18 @@ export async function refreshPRs(forceRefresh = false): Promise<void> {
   try {
     if (forceRefresh) prListCache.invalidate()
     const list = await prListCache.get()
-    setPRs("list", list)
+
+    // Deduplicate by PR number (safety net against API/cache edge cases)
+    const seen = new Set<number>()
+    const unique = list.filter((pr) => {
+      if (seen.has(pr.number)) return false
+      seen.add(pr.number)
+      return true
+    })
+
+    // reconcile diffs by PR number — reuses existing store proxies,
+    // preventing <For> from seeing all items as "new" on every refresh
+    setPRs("list", reconcile(unique, { key: "number" }))
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     logError("Failed to refresh PRs", { error: msg })
