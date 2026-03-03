@@ -70,7 +70,14 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - run: npm publish --access public
+      - name: Publish to npm
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@rsbmk1/gittui@${VERSION}" version 2>/dev/null; then
+            echo "v${VERSION} already published — skipping"
+          else
+            npm publish --access public
+          fi
 
   update-homebrew:
     needs: release
