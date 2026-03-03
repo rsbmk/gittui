@@ -38,11 +38,12 @@ trap 'rm -rf "$TMP"' EXIT
 curl -fsSL "$URL" -o "${TMP}/gittui.tar.gz"
 tar xzf "${TMP}/gittui.tar.gz" -C "$TMP"
 
-# Install - try without sudo first, fall back to sudo
-if [ -w "$INSTALL_DIR" ]; then
+# Ensure install directory exists, then install binary
+if [ -w "$INSTALL_DIR" ] || mkdir -p "$INSTALL_DIR" 2>/dev/null; then
   mv "${TMP}/gittui" "${INSTALL_DIR}/gittui"
 else
   echo "Need sudo to install to ${INSTALL_DIR}"
+  sudo mkdir -p "$INSTALL_DIR"
   sudo mv "${TMP}/gittui" "${INSTALL_DIR}/gittui"
 fi
 
