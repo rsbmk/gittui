@@ -1,25 +1,25 @@
 class Gittui < Formula
   desc "Modern terminal git client"
   homepage "https://github.com/rsbmk/gittui"
-  version "0.1.2"
+  version "0.1.3"
   license "MIT"
 
   on_macos do
     on_arm do
       url "https://github.com/rsbmk/gittui/releases/download/v#{version}/gittui-darwin-arm64.tar.gz"
-      sha256 "3f8802bf730d821c5a036a4d663ddc6e717c6e2c600a18b48b0d5abfd9e6651a"
+      sha256 "98bddd3dbe374836d10808f2951d6124ad3ae5fc32828e8b71afed7ececf5251"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/rsbmk/gittui/releases/download/v#{version}/gittui-linux-arm64.tar.gz"
-      sha256 "d3562326eba308e4328e6ef201805730b6bd84453dd422cfad39d89196c5802a"
+      sha256 "4eccb82ac74bf5c49c4e3ef51cb168c5c7ca95ce3584b1abbbadbaa4335c01de"
     end
 
     on_intel do
       url "https://github.com/rsbmk/gittui/releases/download/v#{version}/gittui-linux-x64.tar.gz"
-      sha256 "070c1b4e65e4ff9bdd2228dd240bc84db4f4c8292714e0f3323cb1a0419e1b2e"
+      sha256 "203c94d3612c346d193568cfc7601035862b70e25be4f8184ae00a2e5a8d84fb"
     end
   end
 
